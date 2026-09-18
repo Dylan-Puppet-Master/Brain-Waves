@@ -34,17 +34,23 @@ HEADING_ROW_HEIGHT = 34
 
 
 def board_requests(
-    week: Week, tab_id: int, locations_tab: str, new_sheet: bool = False
+    week: Week,
+    tab_id: int,
+    locations_tab: str,
+    new_sheet: bool = False,
+    size: tuple[int, int] = (0, 0),
 ) -> list[dict]:
     """Every request needed to shape the Board tab for this week's shape.
 
     `new_sheet` also adds the conditional formats that colour the risk cells. They cover
     every row and column from the first card onward, so they never need adding again;
     adding them twice would leave the sheet with two copies of each rule.
+
+    `size` is the tab's current row and column count, so the grid is only ever grown.
     """
     rows, columns = layout.grid_size(len(week.cabins), week.columns)
     return [
-        *_frame(tab_id, rows, columns),
+        *_frame(tab_id, rows, columns, size),
         *_widths(tab_id, week.columns),
         *_headings(tab_id, week, columns),
         *_cabin_column(tab_id, week),
@@ -99,19 +105,31 @@ def _rows(tab_id: int, start: int, end: int, height: int) -> dict:
     }
 
 
-def _frame(tab_id: int, rows: int, columns: int) -> list[dict]:
+def _frame(tab_id: int, rows: int, columns: int, size: tuple[int, int]) -> list[dict]:
+    """Freeze the headings, hide the sheet's own gridlines, and make room for the board.
+
+    The grid is only ever grown. `size` is what the tab holds now, so a tab someone has
+    added rows or columns to does not have them taken away.
+    """
+    held_rows, held_columns = size
     return [
         {
             "updateSheetProperties": {
                 "properties": {
                     "sheetId": tab_id,
+                    "tabColorStyle": {"rgbColor": sheets_color(ACCENT)},
                     "gridProperties": {
+                        "hideGridlines": True,
                         "frozenRowCount": layout.FIRST_CARD_ROW,
                         "frozenColumnCount": layout.FIRST_CARD_COLUMN,
-                        "rowCount": max(rows, 1),
-                        "columnCount": max(columns, 1),
+                        "rowCount": max(rows, held_rows, 1),
+                        "columnCount": max(columns, held_columns, 1),
                     },
-                }
+                },
+                "fields": (
+                    "tabColorStyle,gridProperties(hideGridlines,frozenRowCount,"
+                    "frozenColumnCount,rowCount,columnCount)"
+                ),
             }
         },
         _repeat(

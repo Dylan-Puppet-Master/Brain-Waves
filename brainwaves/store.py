@@ -224,6 +224,7 @@ class BoardStore:
                 self.week,
                 self.workbook.tab_id(week_sheet.BOARD_TAB),
                 week_sheet.LOCATIONS_TAB,
+                size=self.workbook.size(week_sheet.BOARD_TAB),
             )
         )
         self._write_support()

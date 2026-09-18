@@ -39,6 +39,9 @@ class Workbook(Protocol):
     def tab_id(self, tab: str) -> int:
         """The numeric id the Sheets API uses for a tab."""
 
+    def size(self, tab: str) -> tuple[int, int]:
+        """How many rows and columns the tab holds, which is not how many are filled."""
+
     def apply(self, requests: list[dict]) -> None:
         """Send raw Sheets API requests. Where formatting is not possible, no-op."""
 
@@ -82,6 +85,11 @@ class CsvWorkbook:
     def tab_id(self, tab: str) -> int:
         """CSV files have no tab ids; the name's position stands in for one."""
         return self.tabs().index(tab) if tab in self.tabs() else 0
+
+    def size(self, tab: str) -> tuple[int, int]:
+        """A CSV file is exactly as big as what is in it."""
+        table = self.read(tab) if (self.root / f"{tab}.csv").exists() else []
+        return len(table), max((len(row) for row in table), default=0)
 
     def apply(self, requests: list[dict]) -> None:
         """CSV files carry no formatting."""
@@ -129,6 +137,11 @@ class SheetsWorkbook:
         if tab not in ids:
             raise LoadError(f"no tab '{tab}'")
         return ids[tab]
+
+    def size(self, tab: str) -> tuple[int, int]:
+        """The worksheet's grid size, so formatting can grow it without trimming it."""
+        worksheet = self.spreadsheet.worksheet(tab)
+        return worksheet.row_count, worksheet.col_count
 
     def read(self, tab: str) -> Table:
         """All values of one worksheet."""
