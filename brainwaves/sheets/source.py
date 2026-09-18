@@ -149,13 +149,18 @@ class SheetsWorkbook:
         }
 
     def write(self, tab: str, table: Table, cell: str = "A1") -> None:
-        """Put a block of cells at `cell`."""
+        """Put a block of cells at `cell`.
+
+        Values are written as a person would type them, so TRUE becomes a checkbox; a
+        value that would be read as a formula is quoted first, and Sheets gives it back
+        unquoted.
+        """
         if not table:
             return
         self.spreadsheet.values_update(
             f"'{tab}'!{cell}",
             params={"valueInputOption": "USER_ENTERED"},
-            body={"values": table},
+            body={"values": [[literal(value) for value in row] for row in table]},
         )
 
     def clear(self, tab: str) -> None:
@@ -194,6 +199,15 @@ def index_to_a1(row: int, column: int) -> str:
         column, remainder = divmod(column - 1, 26)
         letters = chr(ord("A") + remainder) + letters
     return f"{letters}{row + 1}"
+
+
+# A cell starting with one of these is a formula to Google Sheets, not text.
+FORMULA_START = ("=", "+", "-", "@")
+
+
+def literal(value: str) -> str:
+    """A value Sheets will store as written, not work out."""
+    return f"'{value}" if value.startswith(FORMULA_START) else value
 
 
 def cell(table: Table, row: int, column: int) -> str:

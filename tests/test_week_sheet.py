@@ -117,3 +117,12 @@ def test_materials_split_and_join(week):
     card = CabinAct(title="x", materials=("a", "b"))
     block = card_block(card)
     assert block[layout.MATERIALS][layout.VALUE_OFFSET] == "a, b"
+
+
+def test_a_value_that_looks_like_a_formula_is_quoted_for_sheets():
+    from brainwaves.sheets.source import literal
+
+    assert literal("=surprise") == "'=surprise"
+    assert literal("- no idea yet") == "'- no idea yet"
+    assert literal("Becoming a team") == "Becoming a team"
+    assert literal("TRUE") == "TRUE"
