@@ -10,6 +10,9 @@ from typing import Protocol
 
 Table = list[list[str]]
 
+# Formatting a whole week is a large request; the API takes it more happily in pieces.
+BATCH_SIZE = 25
+
 
 class LoadError(Exception):
     """Bad or missing sheet data. The message names the tab and the cell or row."""
@@ -166,9 +169,11 @@ class SheetsWorkbook:
             self._tabs = None
 
     def apply(self, requests: list[dict]) -> None:
-        """Send raw Sheets API requests in one batch."""
-        if requests:
-            self.spreadsheet.batch_update({"requests": requests})
+        """Send raw Sheets API requests, in batches small enough not to be refused."""
+        for start in range(0, len(requests), BATCH_SIZE):
+            chunk = requests[start : start + BATCH_SIZE]
+            if chunk:
+                self.spreadsheet.batch_update({"requests": chunk})
 
 
 def a1_to_index(cell: str) -> tuple[int, int]:

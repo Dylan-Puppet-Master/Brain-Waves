@@ -30,7 +30,7 @@ def test_render_puts_the_title_and_day_names_where_they_belong(week):
 
 def test_a_card_block_holds_every_field(week):
     block = card_block(week.card("M1", 0))
-    assert block[layout.TITLE][layout.LABEL_OFFSET] == "Becoming a team"
+    assert block[layout.TITLE][layout.VALUE_OFFSET] == "Becoming a team"
     assert block[layout.TITLE][layout.ID_OFFSET] == "aaa111"
     assert block[layout.MATERIALS][layout.VALUE_OFFSET] == "blindfolds, rope"
     assert block[layout.LOCATION][layout.FLAG_VALUE_OFFSET] == "TRUE"
@@ -41,7 +41,8 @@ def test_a_card_block_holds_every_field(week):
 
 def test_an_empty_slot_renders_as_labels_only():
     block = card_block(None)
-    assert block[layout.TITLE][layout.LABEL_OFFSET] == ""
+    assert block[layout.TITLE][layout.VALUE_OFFSET] == ""
+    assert block[layout.TITLE][layout.LABEL_OFFSET] == "Activity"
     assert block[layout.DESCRIPTION][layout.LABEL_OFFSET] == "Description"
     assert block[layout.DESCRIPTION][layout.FLAG_VALUE_OFFSET] == Risk.NONE.value
 

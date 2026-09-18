@@ -60,7 +60,7 @@ def parse_card(board: Table, cabin_index: int, column: int) -> CabinAct | None:
 
     card = CabinAct(
         id=cell(board, row, left + layout.ID_OFFSET) or new_card_id(),
-        title=cell(board, row, left + layout.LABEL_OFFSET),
+        title=value(layout.TITLE),
         description=value(layout.DESCRIPTION),
         materials=split_list(value(layout.MATERIALS)),
         location=value(layout.LOCATION),
@@ -99,17 +99,22 @@ def card_block(card: CabinAct | None) -> Table:
     """A card as the six rows by five columns the sheet holds it in."""
     if card is None:
         card = CabinAct(id="")
-    values = ("", card.description, join_list(card.materials), card.location, card.notes)
-    flags = (card.van, card.risk.value, card.armory, card.picnic, card.food)
+    values = (
+        card.title,
+        card.description,
+        join_list(card.materials),
+        card.location,
+        card.notes,
+        join_list(card.heroes),
+    )
+    flags = (card.van, card.risk.value, card.armory, card.picnic, card.food, "")
     block = [
         [label, value, flag_label, _flag_text(flag), ""]
         for label, value, flag_label, flag in zip(
-            layout.FIELD_LABELS[: layout.HEROES], values, layout.FLAG_LABELS, flags, strict=True
+            layout.FIELD_LABELS, values, layout.FLAG_LABELS, flags, strict=True
         )
     ]
-    block[layout.TITLE][layout.LABEL_OFFSET] = card.title
     block[layout.TITLE][layout.ID_OFFSET] = card.id
-    block.append([layout.FIELD_LABELS[layout.HEROES], join_list(card.heroes), "", "", ""])
     return block
 
 
