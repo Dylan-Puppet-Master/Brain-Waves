@@ -7,6 +7,7 @@ from pathlib import Path
 from brainwaves.google.comments import RawComment, RawReply
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.source import CsvWorkbook
+from brainwaves.sheets.staff import StaffLists
 from brainwaves.workspace import WeekSheet, write_template
 
 
@@ -102,11 +103,15 @@ class FakeDrive:
 class FakeWorkspace:
     """Reads and writes a folder of CSV files instead of a Google spreadsheet."""
 
-    def __init__(self, root, names=("Dylan", "Vic", "Catana")):
+    def __init__(self, root, staff=None):
         self.root = root
         self.comments = FakeComments()
         self.drive = FakeDrive(root)
-        self.names = names
+        self.staff = staff or StaffLists(
+            names=("Dylan", "Vic", "Catana"),
+            categories={"Counselor": 22, "VL": 4},
+            skills={"Canopy Tour": 14, "Low Ropes": 7, "Lifeguard": 1},
+        )
 
     def read(self, workbook, week_id):
         tabs = [week_sheet.BOARD_TAB, week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB]
@@ -122,8 +127,8 @@ class FakeWorkspace:
         week = week_sheet.parse_week(sheet.week.id, board, cabins or sheet.week.cabins)
         return WeekSheet(sheet.workbook, week, sheet.locations)
 
-    def staff_names(self):
-        return self.names
+    def staff_lists(self):
+        return self.staff
 
 
 def build(root, week, locations=("Hot Rocks", "Low Ropes 1")) -> tuple[FakeWorkspace, WeekSheet]:

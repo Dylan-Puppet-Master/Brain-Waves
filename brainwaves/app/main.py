@@ -115,7 +115,7 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
 
         self.conflicts = ConflictPanel()
-        self.conflicts.picked.connect(self.board.blink)
+        self.conflicts.picked.connect(self.board.show_clash)
         clashes = QDockWidget("Clashes", self)
         clashes.setObjectName("clashesDock")
         clashes.setWidget(self.conflicts)
@@ -303,7 +303,7 @@ class MainWindow(QMainWindow):
             card,
             f"{cabin} - {self._column_label(column)}",
             self.store.locations,
-            self.store.staff_names,
+            self.store.staff,
             self,
         )
         if dialog.exec() != CardDialog.Accepted:
@@ -448,9 +448,9 @@ class MainWindow(QMainWindow):
         if self.store is None:
             return
         counts = binding.count_by_card(self.store.comments)
-        self.board.show_week(self.store.week, counts)
+        self.board.show_week(self.store.week, counts, self.store.staff)
         self.board.select(self.selected_card)
-        self.conflicts.show_conflicts(find_conflicts(self.store.week))
+        self.conflicts.show_conflicts(find_conflicts(self.store.week, self.store.staff))
         self._draw_comments()
         self.pages.setCurrentWidget(self.board)
 

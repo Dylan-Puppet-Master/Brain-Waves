@@ -1,9 +1,17 @@
-"""What a brand new week starts out with when there is no earlier week to copy.
+"""Camp's own constants: the documents Brain Waves reads, and what a new week starts with.
+
+The two spreadsheet ids are not secrets — reading either still needs Drive permission — so
+they live here rather than being built in, which means Brain Waves works out of the box and
+a config file only has to say what camp wants changed.
+
 
 The location list is camp's, taken from the BACKEND tab of the old workbook. Editing the
 Locations tab of a week sheet changes that week; editing this list changes every week made
 from now on.
 """
+
+SKILLS_SHEET = "1Woqx_vthAAbGh-CSGFwgMDooqhkt0PWV1XKLiNqiJvU"
+CATEGORIES_SHEET = "1ldemXKtda6NgmCYp6vDQXVSvO6bdIRiMieNr400A6Ug"
 
 DEFAULT_LOCATIONS = (
     "_Other",

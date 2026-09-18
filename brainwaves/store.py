@@ -29,6 +29,7 @@ from brainwaves.model import DAY_COLUMNS, EXTRA, CabinAct, Comment, Week
 from brainwaves.names import new_card_id
 from brainwaves.sheets import layout
 from brainwaves.sheets import week as week_sheet
+from brainwaves.sheets.staff import StaffLists
 from brainwaves.sheets.style import board_requests, support_requests
 from brainwaves.sheets.support import render_support
 from brainwaves.workspace import WeekSheet, Workspace
@@ -43,7 +44,7 @@ class BoardStore:
         self.week = sheet.week
         self.locations = sheet.locations
         self.comments: list[Comment] = []
-        self.staff_names: tuple[str, ...] = ()
+        self.staff = StaffLists()
         self.pending: list[Callable[[], None]] = []
         self._lock = Lock()
 
@@ -58,11 +59,11 @@ class BoardStore:
         return self.workbook.id
 
     def load_staff(self) -> None:
-        """Read the Skills doc once; a failure leaves the chips free-text."""
+        """Read the staff documents once; a failure leaves the chips free text."""
         try:
-            self.staff_names = self.workspace.staff_names()
-        except Exception:  # noqa: BLE001 - HERO chips still work without the list
-            self.staff_names = ()
+            self.staff = self.workspace.staff_lists()
+        except Exception:  # noqa: BLE001 - HERO chips still work without the lists
+            self.staff = StaffLists()
 
     @property
     def busy(self) -> bool:

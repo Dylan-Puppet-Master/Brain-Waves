@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QFormLayout,
     QGridLayout,
+    QLabel,
     QLineEdit,
     QTextEdit,
     QVBoxLayout,
@@ -34,7 +35,7 @@ FLAGS = (
 class CardDialog(QDialog):
     """Edit one cabin act. Accepting returns the card through `result_card`."""
 
-    def __init__(self, card: CabinAct, where: str, locations, staff, parent=None) -> None:
+    def __init__(self, card: CabinAct, where: str, locations, staff=None, parent=None) -> None:
         super().__init__(parent)
         self.card = card
         self.setWindowTitle(f"Cabin act - {where}")
@@ -78,9 +79,18 @@ class CardDialog(QDialog):
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
 
+        hint = QLabel(
+            "A HERO can be a person by name, a category of person, or a skill — anyone "
+            "checked off on it will do."
+        )
+        hint.setObjectName("hint")
+        hint.setWordWrap(True)
+
         layout = QVBoxLayout(self)
         layout.setContentsMargins(18, 16, 18, 14)
+        layout.setSpacing(10)
         layout.addLayout(form)
+        layout.addWidget(hint)
         layout.addWidget(buttons)
         self.title.setFocus()
 

@@ -24,7 +24,7 @@ that will not take it fades. That is deliberate. A cabin's activities belong to 
 | `R` `Y` `G` `N` badge | Risk: red needs director sign-off, yellow is risk-managed, green needs a trained facilitator, none needs neither |
 | Amber number | Open comments |
 | Grey chips | Van, Armory, Picnic, Food, when the activity needs them |
-| Teal chips | The HEROES asked for |
+| Teal chips | The HEROES asked for. A filled chip is a person by name; an outlined one is a category or a skill, meaning anyone who fits |
 
 Hover a card to see everything, materials and notes included.
 
@@ -48,16 +48,38 @@ so and offers to make one; press **Start New Week** and the sheet is created fro
 template, with the cabins and locations of the week you had open. It refuses if that week
 already exists, so pressing it twice cannot make two.
 
+## Asking for a HERO
+
+Press **+ HERO** in the card editor and type. Three kinds of thing can go in a chip, and
+the list completes against all of them:
+
+| Chip | Means | Where the list comes from |
+|---|---|---|
+| `Dylan` | That person | The names on the Skills doc |
+| `Counselor` | Any one of the counselors | The column headings of the Staff Categories doc |
+| `Canopy Tour` | Anyone checked off on it | The skill headings of the Skills doc |
+
+A person's chip is filled in; a category or a skill is outlined, so you can see at a glance
+which cards need a particular body and which need only a warm one. Hover a chip to see how
+many people it could mean. Anything not on any of the three lists is taken as a person's
+name, so a chip never has to wait for a document to catch up.
+
 ## Clashes
 
 Every cabin act runs in the same hour, so two cabins on the same day cannot both be at Low
 Ropes 1 and cannot both have Dylan. The **Clashes** pane, under the comments, lists every
-one of those: the day, what is wanted twice, and which cabins want it. Choose a row and the
-cards it is about blink red on the board, which is scrolled to the first of them.
+one of those: the day, what has been asked for too often, and which cabins asked. Choose a
+row and those cards are outlined in red, and the board scrolls to the first of them.
+
+Asking for a category or a skill twice is not a clash — camp has twenty-two counselors, so
+two cabins can each have one. It becomes a clash when more cabins want one than there are
+people who fit: three cabins wanting a Director when camp has three is fine, four is not.
+Brain Waves counts the people under each category heading, and the people with something
+other than a blank in any of a skill's columns.
 
 Nothing is prevented. Two cabins at the lake may be perfectly fine, and the Brain is the one
-who knows; the pane only makes sure nobody finds out on the day. A clash disappears from the
-list as soon as one of the two cards is changed or moved.
+who knows; the pane only makes sure nobody finds out on the day. A row leaves the list as
+soon as one of the cards is changed or moved.
 
 Activities in the Extra columns are left out, because an activity with no day cannot clash
 with anything. Locations that say nothing about where a cabin will be — `_Other` and

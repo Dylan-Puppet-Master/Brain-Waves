@@ -27,7 +27,7 @@ def main(destination: Path) -> None:
     week = sample_week()
     workspace, sheet = build(tempfile.mkdtemp(), week, locations=SAMPLE_LOCATIONS)
     store = BoardStore(workspace, sheet)
-    store.staff_names = SAMPLE_STAFF
+    store.staff = SAMPLE_STAFF
     store.add_comment("a1", "Do we have a low ropes facilitator free on Monday?")
     store.add_comment("e1", "This needs a van and a director sign-off. Who is driving?")
     store.flush()

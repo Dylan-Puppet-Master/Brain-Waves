@@ -12,6 +12,17 @@ from PySide6.QtWidgets import (
 )
 
 from brainwaves.app.widgets import FlowLayout, height_follows_width
+from brainwaves.sheets.staff import CATEGORY, PERSON, StaffLists
+
+
+def describe(name: str, staff: StaffLists) -> str:
+    """What a chip means, for a tooltip: a person, or any one of a group."""
+    kind = staff.kind_of(name)
+    if kind == PERSON:
+        return f"{name}, by name"
+    how_many = staff.how_many(name)
+    group = "in that category" if kind == CATEGORY else "checked off on it"
+    return f"Any one of the {how_many} {group}"
 
 
 class ChipEditor(QWidget):
@@ -19,9 +30,10 @@ class ChipEditor(QWidget):
 
     changed = Signal()
 
-    def __init__(self, options=(), placeholder: str = "add a HERO") -> None:
+    def __init__(self, staff=None, placeholder: str = "add a HERO") -> None:
         super().__init__()
-        self.options = tuple(options)
+        self.staff = staff or StaffLists()
+        self.options = self.staff.options
         self.values: list[str] = []
         self.placeholder = placeholder
         self._layout = FlowLayout(self, spacing=5)
@@ -32,7 +44,7 @@ class ChipEditor(QWidget):
         self.entry.returnPressed.connect(self._commit)
         self.entry.editingFinished.connect(self._commit)
         if self.options:
-            completer = QCompleter(self.options, self.entry)
+            completer = QCompleter(list(self.options), self.entry)
             completer.setCaseSensitivity(Qt.CaseInsensitive)
             completer.setFilterMode(Qt.MatchContains)
             completer.activated.connect(lambda _: self.entry.returnPressed.emit())
@@ -82,7 +94,7 @@ class ChipEditor(QWidget):
             if widget is not None and widget not in (self.entry, self.add_button):
                 widget.deleteLater()
         for name in self.values:
-            self._layout.addWidget(_removable(name, self._remove))
+            self._layout.addWidget(_removable(name, self.staff, self._remove))
         self._layout.addWidget(self.entry)
         self._layout.addWidget(self.add_button)
         self.entry.setVisible(False)
@@ -90,10 +102,12 @@ class ChipEditor(QWidget):
         self.updateGeometry()
 
 
-def _removable(name: str, remove) -> QFrame:
-    """One name, as a pill with a cross that takes it off again."""
+def _removable(name: str, staff, remove) -> QFrame:
+    """One chip, as a pill with a cross that takes it off again."""
     pill = QFrame()
     pill.setObjectName("chipPill")
+    pill.setProperty("kind", staff.kind_of(name))
+    pill.setToolTip(describe(name, staff))
     layout = QHBoxLayout(pill)
     layout.setContentsMargins(10, 3, 5, 3)
     layout.setSpacing(4)

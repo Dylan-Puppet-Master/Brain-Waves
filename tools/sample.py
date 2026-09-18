@@ -1,6 +1,7 @@
 """A week of made-up cabin acts, used by the screenshot tool and by the docs."""
 
 from brainwaves.model import Cabin, CabinAct, Day, Risk, Week, WeekId, sort_cabins
+from brainwaves.sheets.staff import StaffLists
 
 SAMPLE_LOCATIONS = (
     "Craft Shack 1",
@@ -16,17 +17,10 @@ SAMPLE_LOCATIONS = (
     "Pine",
 )
 
-SAMPLE_STAFF = (
-    "Dylan",
-    "Vic",
-    "Catana",
-    "Yolanne",
-    "Donny",
-    "Paul",
-    "Tyson",
-    "Brian",
-    "Charlton",
-    "Julian",
+SAMPLE_STAFF = StaffLists(
+    names=("Dylan", "Vic", "Catana", "Yolanne", "Donny", "Paul", "Tyson", "Brian", "Julian"),
+    categories={"Counselor": 22, "Director": 3, "VL": 4, "EQ Staff": 3},
+    skills={"Low Ropes": 7, "Canopy Tour": 14, "Giant Swing": 33, "Katana": 1},
 )
 
 CABINS = (
@@ -63,7 +57,7 @@ def sample_week() -> Week:
             notes="Needs a low ropes facilitator",
             risk=Risk.YELLOW,
             picnic=True,
-            heroes=("Dylan", "Vic"),
+            heroes=("Dylan", "Low Ropes"),
         ),
         ("M1", 1): CabinAct(
             id="a2",
@@ -132,7 +126,7 @@ def sample_week() -> Week:
             location="Craft Shack 2",
             risk=Risk.RED,
             van=True,
-            heroes=("Donny", "Paul"),
+            heroes=("Director", "Paul"),
         ),
         ("P3", 2): CabinAct(
             id="f1",

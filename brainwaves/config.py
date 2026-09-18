@@ -21,9 +21,12 @@ from pathlib import Path
 
 from platformdirs import user_config_path, user_data_path
 
+from brainwaves.defaults import CATEGORIES_SHEET, SKILLS_SHEET
+
 APP_NAME = "brainwaves"
 
 DEFAULT_SKILLS_TAB = "Skills"
+DEFAULT_CATEGORIES_TAB = "Categories"
 DEFAULT_POLL_SECONDS = 3
 DEFAULT_COMMENT_POLL_SECONDS = 10
 DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
@@ -40,8 +43,10 @@ class Config:
 
     client_id: str = ""
     client_secret: str = ""
-    skills_sheet: str = ""
+    skills_sheet: str = SKILLS_SHEET
     skills_tab: str = DEFAULT_SKILLS_TAB
+    categories_sheet: str = CATEGORIES_SHEET
+    categories_tab: str = DEFAULT_CATEGORIES_TAB
     poll_seconds: int = DEFAULT_POLL_SECONDS
     comment_poll_seconds: int = DEFAULT_COMMENT_POLL_SECONDS
     releases_url: str = DEFAULT_RELEASES
@@ -106,8 +111,10 @@ def load_config(path: Path | None = None) -> Config:
     return Config(
         client_id=google.get("client_id", ""),
         client_secret=google.get("client_secret", ""),
-        skills_sheet=sheets.get("skills", ""),
+        skills_sheet=sheets.get("skills", SKILLS_SHEET),
         skills_tab=sheets.get("skills_tab", DEFAULT_SKILLS_TAB),
+        categories_sheet=sheets.get("categories", CATEGORIES_SHEET),
+        categories_tab=sheets.get("categories_tab", DEFAULT_CATEGORIES_TAB),
         poll_seconds=int(sync.get("poll_seconds", DEFAULT_POLL_SECONDS)),
         comment_poll_seconds=int(sync.get("comment_poll_seconds", DEFAULT_COMMENT_POLL_SECONDS)),
         releases_url=data.get("updates", {}).get("releases_url", DEFAULT_RELEASES),
@@ -123,7 +130,14 @@ def _built_in() -> dict:
             "client_id": SETTINGS.get("client_id", ""),
             "client_secret": SETTINGS.get("client_secret", ""),
         },
-        "sheets": {"skills": SETTINGS.get("skills_sheet", "")},
+        "sheets": {
+            key: value
+            for key, value in (
+                ("skills", SETTINGS.get("skills_sheet", "")),
+                ("categories", SETTINGS.get("categories_sheet", "")),
+            )
+            if value
+        },
     }
 
 

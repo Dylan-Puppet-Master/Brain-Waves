@@ -152,6 +152,10 @@ QFrame#chipPill {{
     border-radius: 11px;
 }}
 QFrame#chipPill:hover {{ border-color: {ACCENT}; }}
+QFrame#chipPill[kind="category"], QFrame#chipPill[kind="skill"] {{
+    background: {SURFACE};
+    border: 1px dashed {ACCENT};
+}}
 QLabel#chipPillName {{
     color: {ACCENT_DARK};
     font-size: 12px;
@@ -206,6 +210,15 @@ QLabel#chip {{
     color: {ACCENT_DARK};
     border-radius: 9px;
     padding: 3px 9px;
+    font-size: 12px;
+    font-weight: 600;
+}}
+QLabel#groupChip {{
+    background: {SURFACE};
+    color: {ACCENT_DARK};
+    border: 1px dashed {ACCENT};
+    border-radius: 9px;
+    padding: 2px 8px;
     font-size: 12px;
     font-weight: 600;
 }}

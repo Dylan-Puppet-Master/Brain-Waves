@@ -46,10 +46,18 @@ written once when the board is laid out and never again — and a card write goe
 value and flag columns beside it. That is also why laying the board out again clears only
 what lies beyond it rather than wiping the tab.
 
-**A clash is reported, never prevented.** `conflicts.py` is arithmetic on a `Week` and
-nothing else: no network, no window, no state. The Brain may well look at two cabins on the
-lake and decide it is fine, so the program does not argue — it just makes sure the choice is
-a choice rather than a surprise on the day.
+**A clash is reported, never prevented.** `conflicts.py` is arithmetic on a `Week` and a
+`StaffLists` and nothing else: no network, no window, no state. The Brain may well look at
+two cabins on the lake and decide it is fine, so the program does not argue — it just makes
+sure the choice is a choice rather than a surprise on the day.
+
+**A HERO chip is not always a person.** It may be a category or a skill, meaning anyone who
+fits, and the difference decides whether asking twice is a problem. Rather than mark the
+kind on the sheet, which would make the cell harder for a person to read, the chip stays
+plain text and is matched against the three lists when it is read: name, then category, then
+skill, and a person if it is none of them. The counts come from the same read, which is what
+lets "four cabins want a Director and camp has three" be a clash while "two cabins want a
+Counselor" is not.
 
 **Comments are Google's, not ours.** A tab of our own would have been simpler to write and
 worse to use: no notifications, no sidebar, no author. The cost is that anchoring a new

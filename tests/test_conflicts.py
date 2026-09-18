@@ -4,6 +4,7 @@ import pytest
 
 from brainwaves.conflicts import HERO, LOCATION, cards_in, find_conflicts
 from brainwaves.model import CabinAct, Risk
+from brainwaves.sheets.staff import StaffLists
 
 
 def place(week, slots):
@@ -156,3 +157,104 @@ def test_editing_a_card_out_of_the_way_clears_the_clash(week):
     assert find_conflicts(week)
     moved = week.place("P1", 1, replace(week.card("P1", 1), location="Manzi"))
     assert find_conflicts(moved) == []
+
+
+CAMP = StaffLists(
+    names=("Dylan", "Vic"),
+    categories={"Counselor": 22, "Director": 3},
+    skills={"Canopy Tour": 14, "Katana": 1},
+)
+
+
+def test_a_category_two_cabins_can_both_have_is_no_clash(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", heroes=("Counselor",)),
+            ("P1", 1): CabinAct(id="two", heroes=("Counselor",)),
+        },
+    )
+    assert find_conflicts(week, CAMP) == []
+
+
+def test_a_skill_only_one_person_has_clashes(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", heroes=("Katana",)),
+            ("P1", 1): CabinAct(id="two", heroes=("Katana",)),
+        },
+    )
+    clash = find_conflicts(week, CAMP)[0]
+    assert (clash.what, clash.available, clash.wanted) == ("Katana", 1, 2)
+
+
+def test_asking_for_more_of_a_category_than_camp_has(week):
+    week = place(
+        week,
+        {
+            ("M1", 2): CabinAct(id="one", heroes=("Director",)),
+            ("P1", 2): CabinAct(id="two", heroes=("Director",)),
+            ("O1", 2): CabinAct(id="three", heroes=("Director",)),
+            ("C1", 2): CabinAct(id="four", heroes=("Director",)),
+        },
+    )
+    clash = find_conflicts(week, CAMP)[0]
+    assert (clash.wanted, clash.available) == (4, 3)
+    assert clash.summary == ("Wednesday: M1, P1, O1 and C1 want Director, and only 3 can")
+
+
+def test_a_person_named_twice_still_clashes_when_camp_is_known(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", heroes=("Dylan",)),
+            ("P1", 1): CabinAct(id="two", heroes=("Dylan",)),
+        },
+    )
+    assert [c.what for c in find_conflicts(week, CAMP)] == ["Dylan"]
+
+
+def test_a_name_nobody_recognises_is_treated_as_one_person(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", heroes=("Somebody's cousin",)),
+            ("P1", 1): CabinAct(id="two", heroes=("Somebody's cousin",)),
+        },
+    )
+    assert len(find_conflicts(week, CAMP)) == 1
+
+
+def test_without_the_camp_documents_every_chip_counts_as_one_person(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", heroes=("Counselor",)),
+            ("P1", 1): CabinAct(id="two", heroes=("Counselor",)),
+        },
+    )
+    assert len(find_conflicts(week)) == 1  # erring towards saying something
+
+
+def test_a_place_is_still_one_place_however_many_staff_there_are(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", location="Hot Rocks"),
+            ("P1", 1): CabinAct(id="two", location="Hot Rocks"),
+        },
+    )
+    assert find_conflicts(week, CAMP)[0].available == 1
+
+
+def test_three_cabins_reads_as_three_cabins(week):
+    week = place(
+        week,
+        {
+            ("M1", 0): CabinAct(id="one", heroes=("Dylan",)),
+            ("P1", 0): CabinAct(id="two", heroes=("Dylan",)),
+            ("O1", 0): CabinAct(id="three", heroes=("Dylan",)),
+        },
+    )
+    assert find_conflicts(week, CAMP)[0].summary == "Monday: M1, P1 and O1 all want Dylan"

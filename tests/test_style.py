@@ -162,7 +162,7 @@ def test_the_window_calls_google_the_way_google_is_declared():
     signature(Workspace.read_board).bind(None, None)
     signature(Workspace.weeks).bind(None, "folder-id")
     signature(Workspace.open).bind(None, "file-id", WeekId(2, 1))
-    signature(Workspace.staff_names).bind(None)
+    signature(Workspace.staff_lists).bind(None)
     signature(write_template).bind(None, None, (), report=print)
 
 

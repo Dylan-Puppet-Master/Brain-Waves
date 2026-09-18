@@ -13,17 +13,19 @@ import sys
 from pathlib import Path
 
 BUILT_IN = Path(__file__).resolve().parent.parent / "brainwaves" / "built_in.py"
-WANTED = {
-    "client_id": "GOOGLE_CLIENT_ID",
-    "client_secret": "GOOGLE_CLIENT_SECRET",
-    "skills_sheet": "SKILLS_SHEET",
-}
+REQUIRED = {"client_id": "GOOGLE_CLIENT_ID", "client_secret": "GOOGLE_CLIENT_SECRET"}
+# Camp's documents have defaults in brainwaves/defaults.py, so these only need setting to
+# point a build at different ones.
+OPTIONAL = {"skills_sheet": "SKILLS_SHEET", "categories_sheet": "CATEGORIES_SHEET"}
+WANTED = {**REQUIRED, **OPTIONAL}
 
 
 def main() -> int:
     """Rewrite the settings dict, keeping the module's docstring. Returns the exit code."""
-    settings = {name: os.environ.get(variable, "") for name, variable in WANTED.items()}
-    missing = [variable for name, variable in WANTED.items() if not settings[name]]
+    settings = {
+        name: os.environ[variable] for name, variable in WANTED.items() if os.environ.get(variable)
+    }
+    missing = [variable for name, variable in REQUIRED.items() if name not in settings]
     if missing:
         print(f"Not set: {', '.join(missing)}", file=sys.stderr)
         print("The build will need a config.toml on each machine.", file=sys.stderr)

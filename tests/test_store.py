@@ -197,10 +197,13 @@ def test_a_new_card_id_is_not_reported_as_a_change(tmp_path, week):
     assert store.reload() is False
 
 
-def test_staff_names_come_from_the_skills_doc(tmp_path, week):
+def test_the_staff_lists_come_from_the_camp_documents(tmp_path, week):
     store = store_for(tmp_path, week)
     store.load_staff()
-    assert "Catana" in store.staff_names
+    assert "Catana" in store.staff.names
+    assert store.staff.categories["Counselor"] == 22
+    assert store.staff.skills["Canopy Tour"] == 14
+    assert "Counselor" in store.staff.options and "Canopy Tour" in store.staff.options
 
 
 def test_the_summary_counts_placed_and_unplaced(week):

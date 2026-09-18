@@ -4,7 +4,7 @@ The day headings and the cabin column are separate scroll areas kept in step wit
 board's own, so the week reads the same at column eight as it does at column one.
 """
 
-from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -28,11 +28,11 @@ from brainwaves.app.theme import (
     village_pair,
 )
 from brainwaves.model import DAY_COLUMNS, EXTRA, Week
+from brainwaves.sheets.staff import StaffLists
 
 SLOT_WIDTH = CARD_WIDTH + 2 * SLOT_PADDING
 SLOT_HEIGHT = CARD_HEIGHT + 2 * SLOT_PADDING
 HEADER_HEIGHT = 68
-BLINK_MILLISECONDS = 550
 
 
 class BoardView(QWidget):
@@ -51,11 +51,8 @@ class BoardView(QWidget):
         self.cards: dict[str, CardWidget] = {}
         self.slots: list[SlotWidget] = []
         self.selected: str | None = None
-        self.blinking: tuple[str, ...] = ()
-        self._lit = False
-        self._blink = QTimer(self)
-        self._blink.setInterval(BLINK_MILLISECONDS)
-        self._blink.timeout.connect(self._toggle)
+        self.clashing: tuple[str, ...] = ()
+        self.staff = StaffLists()
         self._build()
 
     def _build(self) -> None:
@@ -102,9 +99,10 @@ class BoardView(QWidget):
         layout.addLayout(top)
         layout.addLayout(bottom, 1)
 
-    def show_week(self, week: Week, comment_counts: dict[str, int]) -> None:
+    def show_week(self, week: Week, comment_counts: dict[str, int], staff=None) -> None:
         """Draw the week from scratch. Cheap enough that nothing here is incremental."""
         self.week = week
+        self.staff = staff or self.staff
         self.cards.clear()
         self.slots.clear()
         _clear(self.header_body.layout())
@@ -114,22 +112,18 @@ class BoardView(QWidget):
         self._fill_side(week)
         self._fill_grid(week, comment_counts)
         self.select(self.selected)
-        self._show_blinking()
+        self._show_clashing()
 
-    def blink(self, card_ids) -> None:
-        """Ring these cards in red, on and off, until something else is chosen.
+    def show_clash(self, card_ids) -> None:
+        """Ring these cards in red until something else is chosen.
 
-        The board is also scrolled to the first of them: a card blinking somewhere off the
+        The board is also scrolled to the first of them: a card marked somewhere off the
         side of the screen is no use to anyone.
         """
-        self.blinking = tuple(card_ids)
-        self._lit = True
-        self._show_blinking()
-        if not self.blinking:
-            self._blink.stop()
-            return
-        self._blink.start()
-        self.reveal(self.blinking[0])
+        self.clashing = tuple(card_ids)
+        self._show_clashing()
+        if self.clashing:
+            self.reveal(self.clashing[0])
 
     def reveal(self, card_id: str) -> None:
         """Scroll until a card can be seen."""
@@ -137,14 +131,10 @@ class BoardView(QWidget):
         if widget is not None:
             self.board.ensureWidgetVisible(widget, SLOT_WIDTH // 2, SLOT_HEIGHT // 2)
 
-    def _toggle(self) -> None:
-        self._lit = not self._lit
-        self._show_blinking()
-
-    def _show_blinking(self) -> None:
-        lit = set(self.blinking) if self._lit else set()
+    def _show_clashing(self) -> None:
+        marked = set(self.clashing)
         for identifier, widget in self.cards.items():
-            wanted = identifier in lit
+            wanted = identifier in marked
             if widget.property("clash") != wanted:
                 widget.setProperty("clash", wanted)
                 restyle(widget)
@@ -232,7 +222,7 @@ class BoardView(QWidget):
                 self.slots.append(slot)
 
     def _card(self, cabin: str, column: int, card, counts: dict[str, int]) -> CardWidget:
-        widget = CardWidget(cabin, column, card, counts.get(card.id, 0))
+        widget = CardWidget(cabin, column, card, counts.get(card.id, 0), self.staff)
         widget.picked.connect(self.card_picked)
         widget.edit_requested.connect(self.card_edit)
         widget.drag_started.connect(self._lift)

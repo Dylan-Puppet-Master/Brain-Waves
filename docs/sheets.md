@@ -28,7 +28,9 @@ same:
  └────────┴─────────────┴────────────────────────┴──────────┴───────┴──────────┘
 ```
 
-- **Materials** and **HEROES** are comma separated.
+- **Materials** and **HEROES** are comma separated. A HERO may be a person's name, a
+  category from the Staff Categories doc, or a skill from the Skills doc; it is written
+  plainly either way, so the cell reads the same to a person as it always did.
 - **Location** has a dropdown drawn from the Locations tab.
 - **Risk** has a dropdown of `R`, `Y`, `G` and `N`, and colours itself.
 - **Van**, **Armory**, **Picnic** and **Food** are checkboxes.

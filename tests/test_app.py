@@ -18,8 +18,15 @@ from brainwaves.app.theme import apply_theme
 from brainwaves.app.widgets import when_phrase
 from brainwaves.comments import count_by_card, for_card
 from brainwaves.model import Cabin, CabinAct, Risk
+from brainwaves.sheets.staff import StaffLists
 from brainwaves.store import BoardStore
 from tests.fakes import build
+
+STAFF = StaffLists(
+    names=("Dylan", "Vic"),
+    categories={"Counselor": 22},
+    skills={"Canopy Tour": 14},
+)
 
 
 @pytest.fixture(scope="session")
@@ -33,7 +40,7 @@ def app():
 def store(tmp_path, week):
     workspace, sheet = build(tmp_path, week)
     made = BoardStore(workspace, sheet)
-    made.staff_names = ("Dylan", "Vic")
+    made.load_staff()
     return made
 
 
@@ -76,7 +83,7 @@ def test_dropping_asks_for_a_swap(app, store):
 
 
 def test_the_editor_returns_what_was_typed(app, store):
-    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff_names)
+    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff)
     dialog.title.setText(" Canoe trip ")
     dialog.materials.setText("paddles, lifejackets")
     dialog.location.setCurrentText("Hot Rocks")
@@ -91,26 +98,26 @@ def test_the_editor_returns_what_was_typed(app, store):
 
 
 def test_the_editor_returns_nothing_for_an_untouched_card(app, store):
-    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff_names)
+    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff)
     assert dialog.result_card is None
 
 
 def test_deleting_in_the_editor_returns_nothing(app, store):
-    dialog = CardDialog(store.week.card("M1", 0), "M1 - Monday", store.locations, store.staff_names)
+    dialog = CardDialog(store.week.card("M1", 0), "M1 - Monday", store.locations, store.staff)
     dialog.delete_button.click()
     assert dialog.result_card is None
 
 
 def test_the_editor_keeps_the_card_id(app, store):
     original = store.week.card("M1", 0)
-    dialog = CardDialog(original, "M1 - Monday", store.locations, store.staff_names)
+    dialog = CardDialog(original, "M1 - Monday", store.locations, store.staff)
     dialog.notes.setPlainText("bring spare rope")
     assert dialog.result_card.id == original.id
     assert dialog.result_card.notes == "bring spare rope"
 
 
 def test_chips_add_and_remove(app):
-    editor = ChipEditor(("Dylan", "Vic"))
+    editor = ChipEditor(STAFF)
     editor.set_values(["Dylan"])
     editor.entry.setText("Vic")
     editor._commit()
@@ -120,7 +127,7 @@ def test_chips_add_and_remove(app):
 
 
 def test_chips_ignore_a_repeat(app):
-    editor = ChipEditor(("Dylan",))
+    editor = ChipEditor(STAFF)
     editor.set_values(["Dylan"])
     editor.entry.setText("Dylan")
     editor._commit()
@@ -313,7 +320,7 @@ def test_a_flow_layout_gives_no_room_to_a_hidden_widget(app):
 
 
 def test_the_hero_add_button_stays_visible(app):
-    editor = ChipEditor(("Dylan", "Vic"))
+    editor = ChipEditor(STAFF)
     editor.resize(420, 80)
     editor.show()
     app.processEvents()
@@ -325,7 +332,7 @@ def test_the_hero_add_button_stays_visible(app):
 
 
 def test_the_hero_add_button_survives_every_redraw(app):
-    editor = ChipEditor(("Dylan",))
+    editor = ChipEditor(STAFF)
     editor.show()
     for _ in range(4):
         editor.set_values(["Dylan"])
@@ -518,34 +525,30 @@ def test_a_clash_that_gets_settled_stops_being_pointed_at(app, store):
     assert picked[-1] == ()
 
 
-def test_the_cards_of_a_chosen_clash_blink(app, store):
+def test_the_cards_of_a_chosen_clash_are_marked_red(app, store):
     board = BoardView()
     board.show_week(clashing_week(store.week), {})
-    board.blink(("one", "two"))
+    board.show_clash(("one", "two"))
     assert board.cards["one"].property("clash")
+    assert board.cards["two"].property("clash")
     assert not board.cards["aaa111"].property("clash")
-    board._toggle()
-    assert not board.cards["one"].property("clash")
-    board._toggle()
-    assert board.cards["one"].property("clash")
 
 
-def test_blinking_survives_the_board_being_redrawn(app, store):
+def test_the_marking_survives_the_board_being_redrawn(app, store):
     week = clashing_week(store.week)
     board = BoardView()
     board.show_week(week, {})
-    board.blink(("one", "two"))
+    board.show_clash(("one", "two"))
     board.show_week(week, {})
     assert board.cards["one"].property("clash")
 
 
-def test_choosing_nothing_stops_the_blinking(app, store):
+def test_choosing_nothing_clears_the_marking(app, store):
     board = BoardView()
     board.show_week(clashing_week(store.week), {})
-    board.blink(("one",))
-    board.blink(())
+    board.show_clash(("one",))
+    board.show_clash(())
     assert not board.cards["one"].property("clash")
-    assert not board._blink.isActive()
 
 
 def test_the_window_shows_clashes_when_it_draws(window, store):

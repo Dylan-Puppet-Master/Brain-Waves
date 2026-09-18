@@ -14,7 +14,12 @@ from brainwaves.model import Cabin, Week, WeekId, sort_cabins
 from brainwaves.sheets import style
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.source import LoadError, SheetsWorkbook
-from brainwaves.sheets.staff import parse_staff_names
+from brainwaves.sheets.staff import (
+    StaffLists,
+    parse_categories,
+    parse_skills,
+    parse_staff_names,
+)
 from brainwaves.sheets.support import render_support
 
 
@@ -114,12 +119,19 @@ class Workspace:
         write_template(workbook, week, locations, report=report)
         return WeekSheet(workbook, week, tuple(locations))
 
-    def staff_names(self) -> tuple[str, ...]:
-        """Every name on the Skills doc, for the HERO chips."""
-        if not self.config.skills_sheet:
-            return ()
-        workbook = SheetsWorkbook(self.client.open_by_key(self.config.skills_sheet))
-        return parse_staff_names(workbook.read(self.config.skills_tab))
+    def staff_lists(self) -> StaffLists:
+        """Everything a HERO chip may hold: the people, their categories, their skills."""
+        names: tuple[str, ...] = ()
+        skills: dict[str, int] = {}
+        categories: dict[str, int] = {}
+        if self.config.skills_sheet:
+            workbook = SheetsWorkbook(self.client.open_by_key(self.config.skills_sheet))
+            table = workbook.read(self.config.skills_tab)
+            names, skills = parse_staff_names(table), parse_skills(table)
+        if self.config.categories_sheet:
+            workbook = SheetsWorkbook(self.client.open_by_key(self.config.categories_sheet))
+            categories = parse_categories(workbook.read(self.config.categories_tab))
+        return StaffLists(names=names, categories=categories, skills=skills)
 
 
 def write_template(workbook: SheetsWorkbook, week: Week, locations, report=None) -> None:

@@ -8,9 +8,11 @@ from PySide6.QtCore import QMimeData, QPoint, Qt, Signal
 from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
+from brainwaves.app.chips import describe
 from brainwaves.app.theme import CARD_HEIGHT, CARD_WIDTH, SLOT_PADDING, restyle
 from brainwaves.app.widgets import FlowLayout, chip, elided, risk_chip
 from brainwaves.model import CabinAct
+from brainwaves.sheets.staff import PERSON, StaffLists
 
 MIME = "application/x-brainwaves-card"
 TEXT_WIDTH = CARD_WIDTH - 24
@@ -25,11 +27,14 @@ class CardWidget(QFrame):
     drag_started = Signal(str)
     drag_ended = Signal()
 
-    def __init__(self, cabin: str, column: int, card: CabinAct, comments: int = 0) -> None:
+    def __init__(
+        self, cabin: str, column: int, card: CabinAct, comments: int = 0, staff=None
+    ) -> None:
         super().__init__()
         self.cabin = cabin
         self.column = column
         self.card = card
+        self.staff = staff or StaffLists()
         self.setObjectName("card")
         self.setFixedSize(CARD_WIDTH, CARD_HEIGHT)
         self.setCursor(Qt.OpenHandCursor)
@@ -74,7 +79,17 @@ class CardWidget(QFrame):
             layout.addWidget(_chip_bar(flags, "flagChip"))
         layout.addStretch(1)
         if self.card.heroes:
-            layout.addWidget(_chip_bar(self.card.heroes, "chip"))
+            layout.addWidget(self._hero_bar())
+
+    def _hero_bar(self) -> QWidget:
+        """The HERO chips, with a group asked for by name reading differently from a person."""
+        bar = QWidget()
+        layout = FlowLayout(bar)
+        for text in self.card.heroes:
+            kind = self.staff.kind_of(text)
+            name = "chip" if kind == PERSON else "groupChip"
+            layout.addWidget(chip(text, name, describe(text, self.staff)))
+        return bar
 
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """Remember where a drag would have started, and select the card."""

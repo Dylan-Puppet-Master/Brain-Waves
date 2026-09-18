@@ -35,8 +35,10 @@ the releases.
    Ask for these scopes: `drive`, `spreadsheets`, `userinfo.email`.
 4. Under **Credentials**, create an **OAuth client ID** of type **Desktop app**.
 5. In the GitHub repository, under **Settings - Secrets and variables - Actions**, add
-   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SKILLS_SHEET` (the Skills spreadsheet
-   id). The release workflow builds these into every download.
+   `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. The release workflow builds those into
+   every download. The Skills and Staff Categories documents already have camp's ids in
+   `brainwaves/defaults.py`; `SKILLS_SHEET` and `CATEGORIES_SHEET` only need setting to
+   build against different ones.
 
 Push a tag (`git tag v0.2.0 && git push --tags`) and the release is built for all three
 platforms with camp's settings inside.
@@ -62,7 +64,8 @@ client_id     = "…….apps.googleusercontent.com"
 client_secret = "……"
 
 [sheets]
-skills = "1Woqx…"   # the Skills spreadsheet id
+skills     = "1Woqx…"   # the Skills spreadsheet, for names and skills
+categories = "1ldem…"   # the Staff Categories spreadsheet
 
 [sync]
 poll_seconds         = 3    # how often to read the board
@@ -72,8 +75,10 @@ comment_poll_seconds = 10   # how often to read comments, cabins and locations
 releases_url = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
 ```
 
-The Skills doc is what fills the HERO chips. Without it the chips still work, but you type
-the names yourself.
+Both documents fill the HERO chips: the Skills doc gives the staff names and the skills, the
+Staff Categories doc gives the categories. Camp's own are built in, so these lines are only
+needed to point Brain Waves at different ones. Without either, the chips still work — you
+just type the names yourself.
 
 ## Running from source
 
