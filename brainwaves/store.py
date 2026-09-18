@@ -4,6 +4,11 @@ Google Sheets is the authority, but a network round trip is too slow to drag a c
 against. So a change lands in `self.week` at once and its write is queued; `flush` sends
 the queue, in order, from a background thread. Writes are one card block at a time, so two
 villages editing different cards never overwrite each other.
+
+Reading works the other way round. `poll` asks Drive for the file's revision, which is a
+tiny answer, and reads the board only when that revision has moved. Asking every couple of
+seconds therefore costs almost nothing, and someone else's edit appears about as fast as
+they made it.
 """
 
 from collections.abc import Callable
@@ -29,6 +34,7 @@ class BoardStore:
         self.comments: list[Comment] = []
         self.staff_names: tuple[str, ...] = ()
         self.pending: list[Callable[[], None]] = []
+        self.revision = ""
 
     @property
     def workbook(self):
@@ -53,18 +59,48 @@ class BoardStore:
         return bool(self.pending)
 
     def flush(self) -> None:
-        """Send every queued change, oldest first. Runs off the UI thread."""
+        """Send every queued change, oldest first. Runs off the UI thread.
+
+        Our own writes move the revision, so the revision is taken again afterwards to
+        stop the next poll reading the board back for no reason. That is only safe if
+        nobody else wrote while we were editing, so the revision is checked first too;
+        where somebody did, the revision is left stale and the next poll reads properly.
+        """
+        if not self.pending:
+            return
+        ours_alone = self._revision() == self.revision
         while self.pending:
             self.pending.pop(0)()
+        self.revision = self._revision() if ours_alone else ""
+
+    def poll(self) -> bool:
+        """Read the board, but only if Drive says the sheet has moved since we last read it.
+
+        The revision call is the whole point: it is small enough to make every second or
+        two, where reading the board is not.
+        """
+        revision = self._revision()
+        if revision and revision == self.revision:
+            return False
+        return self.reload()
 
     def reload(self) -> bool:
         """Read the sheet and the comments again. True if anything on the board changed."""
+        revision = self._revision()
         fresh = self.workspace.read(self.workbook, self.week.id)
         changed = _contents(fresh.week) != _contents(self.week)
         self.sheet, self.week, self.locations = fresh, fresh.week, fresh.locations
+        self.revision = revision
         self._adopt_new_cards()
         self.reload_comments()
         return changed
+
+    def _revision(self) -> str:
+        """Drive's revision of the week sheet, or "" if Drive would not say."""
+        try:
+            return self.workspace.drive.revision(self.file_id)
+        except Exception:  # noqa: BLE001 - an unanswered question means read anyway
+            return ""
 
     def _adopt_new_cards(self) -> None:
         """Give an id to every card typed straight onto the sheet, and write it back."""

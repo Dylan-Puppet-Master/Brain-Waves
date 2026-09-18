@@ -49,6 +49,16 @@ class Drive:
         response = self.service.files().get(fileId=file_id, fields="name").execute()
         return response.get("name", "")
 
+    def revision(self, file_id: str) -> str:
+        """A short string that changes when the file does.
+
+        This is the cheap question: a couple of hundred bytes, against the several hundred
+        kilobytes of reading a board. Asking it often and reading only on a change is what
+        makes other people's edits appear within a second or two.
+        """
+        response = self.service.files().get(fileId=file_id, fields="version,modifiedTime").execute()
+        return f"{response.get('version', '')}/{response.get('modifiedTime', '')}"
+
     def move(self, file_id: str, parent: str) -> None:
         """Put a file in a folder, taking it out of wherever it was."""
         current = self.service.files().get(fileId=file_id, fields="parents").execute()

@@ -3,9 +3,9 @@
 ## What is authoritative
 
 Google Sheets. Brain Waves holds a copy of one week so that dragging a card is instant, but
-every change is written through to the sheet and the sheet is read again every fifteen
-seconds. Nothing exists only inside the program, which is the point: when Brain Waves is
-not being maintained any more, the sheets are still there and still readable.
+every change is written through to the sheet, and the sheet is read again as soon as anyone
+else touches it. Nothing exists only inside the program, which is the point: when Brain
+Waves is not being maintained any more, the sheets are still there and still readable.
 
 ## How it fits together
 
@@ -55,6 +55,23 @@ the roster or adding an unplaced column rewrites the whole board.
 appends the write to `pending`; `flush` sends the queue in order from a background thread.
 The board moves at the speed of the mouse, and the writes still arrive in the order they
 were made.
+
+**Reading often is made cheap rather than done less.** Asking Drive for a file's revision
+costs a couple of hundred bytes; reading a board costs several hundred kilobytes. `poll`
+asks the cheap question every couple of seconds and reads only when the answer has changed,
+so other people's edits show up about as fast as they make them and the network stays quiet
+in between. A write of our own moves the revision too, so `flush` takes the revision
+afterwards, but only when nobody else wrote while we were editing; where somebody did, the
+revision is left stale and the next poll reads the board properly.
+
+Google can push notifications instead of being asked, which would be better still, but only
+to a public HTTPS endpoint on a verified domain. That means running a server, and a server
+is the thing this program is meant not to need.
+
+**A timer never raises a dialog.** A failed poll writes one line in the status bar and is
+tried again; only something a person asked for — opening a week, creating one, saving —
+is worth interrupting them for. At two seconds, the alternative is a wall of dialogs the
+moment the wifi dips.
 
 **The window never talks to Google.** Everything goes through `app/sync.JobQueue`, one job
 at a time, reporting back through signals. There is no other thread, no lock, and no place

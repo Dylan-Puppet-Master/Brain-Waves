@@ -16,19 +16,26 @@ from platformdirs import user_config_path, user_data_path
 APP_NAME = "brainwaves"
 
 DEFAULT_SKILLS_TAB = "Skills"
-DEFAULT_POLL_SECONDS = 15
+DEFAULT_POLL_SECONDS = 2
+DEFAULT_COMMENT_POLL_SECONDS = 10
 DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
 
 
 @dataclass(frozen=True)
 class Config:
-    """What Brain Waves needs to reach Google and the Skills doc."""
+    """What Brain Waves needs to reach Google and the Skills doc.
+
+    `poll_seconds` is how often to ask Google whether the sheet has changed, which is a
+    small question; the board is only read when the answer is yes. `comment_poll_seconds`
+    is the same for comment threads, which Drive does not report as changes to the file.
+    """
 
     client_id: str = ""
     client_secret: str = ""
     skills_sheet: str = ""
     skills_tab: str = DEFAULT_SKILLS_TAB
     poll_seconds: int = DEFAULT_POLL_SECONDS
+    comment_poll_seconds: int = DEFAULT_COMMENT_POLL_SECONDS
     releases_url: str = DEFAULT_RELEASES
 
     @property
@@ -71,12 +78,14 @@ def load_config(path: Path | None = None) -> Config:
     data = tomllib.loads(path.read_text(encoding="utf-8"))
     google = data.get("google", {})
     sheets = data.get("sheets", {})
+    sync = data.get("sync", {})
     return Config(
         client_id=google.get("client_id", ""),
         client_secret=google.get("client_secret", ""),
         skills_sheet=sheets.get("skills", ""),
         skills_tab=sheets.get("skills_tab", DEFAULT_SKILLS_TAB),
-        poll_seconds=int(data.get("sync", {}).get("poll_seconds", DEFAULT_POLL_SECONDS)),
+        poll_seconds=int(sync.get("poll_seconds", DEFAULT_POLL_SECONDS)),
+        comment_poll_seconds=int(sync.get("comment_poll_seconds", DEFAULT_COMMENT_POLL_SECONDS)),
         releases_url=data.get("updates", {}).get("releases_url", DEFAULT_RELEASES),
     )
 

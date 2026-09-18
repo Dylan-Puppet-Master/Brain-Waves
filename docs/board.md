@@ -55,7 +55,15 @@ survive being closed and reopened.
 
 ## Working at the same time as other people
 
-Brain Waves reads the sheet again every fifteen seconds and redraws when something has
-changed, so two village leaders can fill in their own cabins at once. Each change is
+Someone else's change appears within a second or two. Brain Waves asks Google twice a
+second whether the sheet has moved, which is a very small question, and only reads the
+board when the answer is yes. Comment threads are looked for every ten seconds, because
+Google does not count a new comment as a change to the sheet.
+
+Two village leaders can therefore fill in their own cabins at the same time. Each change is
 written as its own small block of cells, which is why one person's edit does not overwrite
 another's.
+
+Both rates can be changed; see [Install and set up](install.md). If the network drops, the
+line at the top right says so and Brain Waves keeps trying. **Refresh** reads everything
+immediately whatever the rates are.

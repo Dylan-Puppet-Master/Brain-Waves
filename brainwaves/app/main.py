@@ -97,8 +97,11 @@ class MainWindow(QMainWindow):
 
         self._build_toolbar()
         self.poll = QTimer(self)
-        self.poll.setInterval(max(self.config.poll_seconds, 5) * 1000)
+        self.poll.setInterval(max(self.config.poll_seconds, 1) * 1000)
         self.poll.timeout.connect(self._poll)
+        self.comment_poll = QTimer(self)
+        self.comment_poll.setInterval(max(self.config.comment_poll_seconds, 1) * 1000)
+        self.comment_poll.timeout.connect(self._poll_comments)
         self._welcome_step = SIGN_IN
 
     def start(self) -> None:
@@ -115,7 +118,7 @@ class MainWindow(QMainWindow):
 
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """Let queued writes finish before the window goes."""
-        self.poll.stop()
+        self._stop_polling()
         if self.store is not None and self.store.busy:
             self.jobs.submit("flush", self.store.flush)
         self.jobs.stop()
@@ -144,7 +147,7 @@ class MainWindow(QMainWindow):
         self.link_button = _button("Link to Google Sheets", self.link_folder)
         self.new_button = _button("Start New Week", self.start_new_week)
         self.roster_button = _button("Cabins", self.edit_roster)
-        self.refresh_button = _button("Refresh", lambda: self._poll(force=True))
+        self.refresh_button = _button("Refresh", self.refresh)
         for button in (self.link_button, self.new_button, self.roster_button, self.refresh_button):
             bar.addWidget(button)
         bar.addWidget(_stretch())
@@ -201,7 +204,7 @@ class MainWindow(QMainWindow):
         self.state = with_week(self.state, self.session_box.value(), self.week_box.value())
         save_state(self.state)
         week_id = WeekId(self.state.session, self.state.week)
-        self.poll.stop()
+        self._stop_polling()
         self._set_busy(f"Opening {week_id.title}...")
         self.jobs.submit("open", lambda: self._open(week_id))
 
@@ -354,12 +357,28 @@ class MainWindow(QMainWindow):
         self._set_busy(message)
         self.jobs.submit("flush", self.store.flush)
 
-    def _poll(self, force: bool = False) -> None:
-        if self.store is None or (self.store.busy and not force):
+    def _poll(self) -> None:
+        """Ask Google whether the sheet has moved, and read it if it has."""
+        if self.store is None or self.store.busy or self.jobs.waiting:
             return
-        if self.jobs.waiting and not force:
+        self.jobs.submit("sync", self.store.poll)
+
+    def _poll_comments(self) -> None:
+        """Read the comment threads. Drive does not report those as changes to the file."""
+        if self.store is None or self.store.busy or self.jobs.waiting:
             return
+        self.jobs.submit("comments", self.store.reload_comments)
+
+    def refresh(self) -> None:
+        """Read everything again now, whatever the revision says."""
+        if self.store is None:
+            return
+        self._set_busy("Reading the sheet...")
         self.jobs.submit("reload", self.store.reload)
+
+    def _stop_polling(self) -> None:
+        self.poll.stop()
+        self.comment_poll.stop()
 
     def _draw(self) -> None:
         if self.store is None:
@@ -386,6 +405,13 @@ class MainWindow(QMainWindow):
             return self.store.week.days[column].label
         return f"Unplaced {column - DAY_COLUMNS + 1}"
 
+    def _say_offline(self, message: str) -> None:
+        """Report a failed poll in the status line. It will be tried again in a moment."""
+        self.status.setObjectName("statusError")
+        self.status.setText(f"  Not reading Google just now: {message.splitlines()[0][:120]}")
+        self.status.style().unpolish(self.status)
+        self.status.style().polish(self.status)
+
     def _set_busy(self, message: str) -> None:
         self.status.setObjectName("statusBusy" if message else "status")
         self.status.setText(message or self._idle_text())
@@ -404,7 +430,7 @@ class MainWindow(QMainWindow):
             self._opened(result)
         elif name == "create":
             self._created(result)
-        elif name == "reload" and result:
+        elif name in {"reload", "sync"} and result or name == "comments":
             self._draw()
         elif name == "update-check":
             self._checked(result)
@@ -438,6 +464,7 @@ class MainWindow(QMainWindow):
         self._draw()
         self._set_busy("")
         self.poll.start()
+        self.comment_poll.start()
         self.check_for_updates(quietly=True)
 
     def _created(self, week_id: WeekId) -> None:
@@ -457,6 +484,9 @@ class MainWindow(QMainWindow):
     def _job_failed(self, name: str, message: str) -> None:
         if name == "update-quiet":
             return  # a failed startup check is not worth interrupting anyone for
+        if name in {"sync", "comments"}:
+            self._say_offline(message)  # a timer must never raise a dialog at people
+            return
         self._set_busy("")
         if name == "create" and "already" in message:
             QMessageBox.warning(self, "That week already exists", message)

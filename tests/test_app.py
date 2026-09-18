@@ -266,3 +266,23 @@ def test_selecting_a_card_points_the_comment_panel_at_it(window, store):
 def test_the_status_line_says_how_full_the_week_is(window, store):
     window._set_busy("")
     assert "days filled" in window.status.text()
+
+
+def test_a_failed_poll_is_reported_in_the_status_line_not_a_dialog(window):
+    window._job_failed("sync", "no network\nsecond line")
+    assert "Not reading Google just now" in window.status.text()
+    assert window.status.objectName() == "statusError"
+
+
+def test_the_poll_holds_off_while_changes_are_still_being_written(window, store):
+    window.swap_cards("M1", 0, 3)
+    waiting = window.jobs.waiting
+    window._poll()
+    assert window.jobs.waiting == waiting
+
+
+def test_the_comment_poll_holds_off_while_changes_are_being_written(window, store):
+    window.swap_cards("M1", 0, 3)
+    waiting = window.jobs.waiting
+    window._poll_comments()
+    assert window.jobs.waiting == waiting

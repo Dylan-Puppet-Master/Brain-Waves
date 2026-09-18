@@ -96,6 +96,57 @@ def test_replying_and_resolving(tmp_path, week):
     assert store.comments[0].resolved
 
 
+def test_a_poll_reads_nothing_when_the_sheet_has_not_moved(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.reload()
+    before = store.workspace.drive.asked
+    assert store.poll() is False
+    assert store.workspace.drive.asked == before + 1  # only the cheap question was asked
+
+
+def test_a_poll_reads_the_board_once_the_sheet_has_moved(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.reload()
+    other = BoardStore(store.workspace, store.sheet)
+    other.save_card("C1", 2, CabinAct(id="eee555", title="Blacksmithing"))
+    other.flush()
+    assert store.poll() is True
+    assert store.week.card("C1", 2).title == "Blacksmithing"
+    assert store.poll() is False
+
+
+def test_our_own_write_does_not_make_the_next_poll_read_the_board(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.reload()
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.flush()
+    assert store.poll() is False
+
+
+def test_a_write_racing_someone_else_leaves_the_next_poll_to_read(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.reload()
+    other = BoardStore(store.workspace, store.sheet)
+    other.save_card("C1", 2, CabinAct(id="eee555", title="Blacksmithing"))
+    other.flush()
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.flush()
+    assert store.poll() is True
+    assert store.week.card("C1", 2).title == "Blacksmithing"
+    assert store.week.card("O1", 1).title == "Canoe"
+
+
+def test_a_poll_reads_the_board_when_drive_will_not_say(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.reload()
+
+    def sulk(file_id):
+        raise OSError("no network")
+
+    store.workspace.drive.revision = sulk
+    assert store.poll() is False  # nothing changed, but the board was read to find out
+
+
 def test_a_change_made_elsewhere_is_noticed(tmp_path, week):
     store = store_for(tmp_path, week)
     other = BoardStore(store.workspace, store.sheet)

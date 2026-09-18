@@ -1,6 +1,8 @@
 """An offline stand-in for Google: CSV tabs on disk and comments in a list."""
 
+import hashlib
 from datetime import datetime
+from pathlib import Path
 
 from brainwaves.google.comments import RawComment, RawReply
 from brainwaves.sheets import week as week_sheet
@@ -57,12 +59,26 @@ class FakeWorkbook(CsvWorkbook):
         return 0 if tab == week_sheet.BOARD_TAB else 1
 
 
+class FakeDrive:
+    """Stands in for Drive's revision, which really does change when the file does."""
+
+    def __init__(self, root):
+        self.root = Path(root)
+        self.asked = 0
+
+    def revision(self, file_id):
+        self.asked += 1
+        blob = b"".join(sorted(path.read_bytes() for path in self.root.glob("*.csv")))
+        return hashlib.sha1(blob).hexdigest()
+
+
 class FakeWorkspace:
     """Reads and writes a folder of CSV files instead of a Google spreadsheet."""
 
     def __init__(self, root, names=("Dylan", "Vic", "Catana")):
         self.root = root
         self.comments = FakeComments()
+        self.drive = FakeDrive(root)
         self.names = names
 
     def read(self, workbook, week_id):
