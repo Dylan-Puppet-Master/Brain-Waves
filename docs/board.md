@@ -49,9 +49,9 @@ Thursday saves someone planning a picnic that day.
 
 ## Unplaced columns
 
-The three columns to the right of Friday hold activities with no day yet. Press the **+**
-past the last one for another column. They are part of the sheet like any other column, so
-they survive being closed and reopened.
+The three columns to the right of Friday hold activities with no day yet. The **+** in the
+last heading adds another column. They are part of the sheet like any other column, so they
+survive being closed and reopened.
 
 ## Working at the same time as other people
 
