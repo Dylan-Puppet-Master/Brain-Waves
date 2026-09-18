@@ -11,6 +11,7 @@ loads.
 from brainwaves.model import DAY_COLUMNS, Risk, Week
 from brainwaves.palette import (
     ACCENT,
+    ACCENT_DARK,
     ACCENT_SOFT,
     FAINT,
     INK,
@@ -23,14 +24,16 @@ from brainwaves.palette import (
     village_colors,
 )
 from brainwaves.sheets import layout
+from brainwaves.sheets.support import HEADER as SUPPORT_HEADER
 
 CABIN_WIDTH = 108
 VALUE_WIDTH = 250
 LABEL_WIDTH = 84
 FLAG_LABEL_WIDTH = 62
 FLAG_VALUE_WIDTH = 46
-CARD_ROW_HEIGHT = 28
 HEADING_ROW_HEIGHT = 34
+TITLE_ROW_HEIGHT = 40
+PAD = {"top": 3, "bottom": 3, "left": 8, "right": 8}
 
 
 def board_requests(
@@ -86,8 +89,13 @@ def _merge(tab_id: int, top: int, left: int, height: int, width: int) -> dict:
     }
 
 
-def _text(size: int, color: str = INK, bold: bool = False) -> dict:
-    return {"fontSize": size, "bold": bold, "foregroundColor": sheets_color(color)}
+def _text(size: int, color: str = INK, bold: bool = False, italic: bool = False) -> dict:
+    return {
+        "fontSize": size,
+        "bold": bold,
+        "italic": italic,
+        "foregroundColor": sheets_color(color),
+    }
 
 
 def _rows(tab_id: int, start: int, end: int, height: int) -> dict:
@@ -142,11 +150,24 @@ def _frame(tab_id: int, rows: int, columns: int, size: tuple[int, int]) -> list[
                 "backgroundColor": sheets_color(SURFACE),
                 "verticalAlignment": "MIDDLE",
                 "wrapStrategy": "CLIP",
+                "padding": dict(PAD),
                 "textFormat": _text(10),
             },
         ),
-        _rows(tab_id, 0, layout.FIRST_CARD_ROW, HEADING_ROW_HEIGHT),
-        _rows(tab_id, layout.FIRST_CARD_ROW, rows, CARD_ROW_HEIGHT),
+        _rows(tab_id, layout.TITLE_ROW, layout.DAY_ROW, TITLE_ROW_HEIGHT),
+        _rows(tab_id, layout.DAY_ROW, layout.FIRST_CARD_ROW, HEADING_ROW_HEIGHT),
+        # Card rows size themselves to their wrapped contents, so nothing is cut off. An
+        # explicit height would stop that, which is why one is never set.
+        {
+            "autoResizeDimensions": {
+                "dimensions": {
+                    "sheetId": tab_id,
+                    "dimension": "ROWS",
+                    "startIndex": layout.FIRST_CARD_ROW,
+                    "endIndex": rows,
+                }
+            }
+        },
     ]
 
 
@@ -299,28 +320,36 @@ def _cell_for(row_offset: int, position: int, locations_tab: str) -> dict:
 
 
 def _cell_format(row_offset: int, position: int) -> dict:
+    """How one cell of a card block looks. Labels sit quietly; the value column is read."""
+    header = row_offset == layout.TITLE
     if position == layout.ID_OFFSET:
         return {"textFormat": _text(8, FAINT)}
     if position in (layout.LABEL_OFFSET, layout.FLAG_LABEL_OFFSET):
         return {
-            "backgroundColor": sheets_color(PANEL if row_offset == layout.TITLE else SURFACE),
+            "backgroundColor": sheets_color(PANEL if header else SURFACE),
             "horizontalAlignment": "RIGHT",
+            "verticalAlignment": "TOP",
+            "padding": dict(PAD),
             "textFormat": _text(9, FAINT),
         }
     if position == layout.FLAG_VALUE_OFFSET:
         return {
-            "backgroundColor": sheets_color(PANEL if row_offset == layout.TITLE else SURFACE),
+            "backgroundColor": sheets_color(PANEL if header else SURFACE),
             "horizontalAlignment": "CENTER",
+            "verticalAlignment": "TOP",
+            "padding": dict(PAD),
             "textFormat": _text(10, INK, bold=row_offset == layout.DESCRIPTION),
         }
     looks = {
         layout.TITLE: (PANEL, _text(11, INK, bold=True)),
-        layout.HEROES: (ACCENT_SOFT, _text(10, ACCENT)),
+        layout.HEROES: (ACCENT_SOFT, _text(10, ACCENT_DARK, bold=True)),
     }
     background, text = looks.get(row_offset, (SURFACE, _text(10)))
     return {
         "backgroundColor": sheets_color(background),
-        "wrapStrategy": "CLIP",
+        "verticalAlignment": "TOP",
+        "wrapStrategy": "WRAP",
+        "padding": dict(PAD),
         "textFormat": text,
     }
 
@@ -374,6 +403,29 @@ def _borders(tab_id: int, week: Week) -> list[dict]:
                 }
             }
         )
+    return requests + _village_breaks(tab_id, week, width)
+
+
+def _village_breaks(tab_id: int, week: Week, width: int) -> list[dict]:
+    """A heavier line where one village ends and the next begins."""
+    divider = {"style": "SOLID_THICK", "color": sheets_color(MUTED)}
+    seen = set()
+    requests = []
+    for index, cabin in enumerate(week.cabins):
+        village = cabin.village.label if cabin.village else ""
+        if village in seen:
+            continue
+        seen.add(village)
+        requests.append(
+            {
+                "updateBorders": {
+                    "range": _range(
+                        tab_id, layout.cabin_row(index), layout.CABIN_COLUMN, 1, width + 1
+                    ),
+                    "top": divider,
+                }
+            }
+        )
     return requests
 
 
@@ -410,3 +462,152 @@ def _risk_colors(tab_id: int) -> list[dict]:
         for value, color in RISK_COLORS.items()
         if value != Risk.NONE.value
     ]
+
+
+def list_tab_requests(tab_id: int, columns: int, widths=(), banded: bool = True) -> list[dict]:
+    """A plain tab with one heading row: frozen, banded, and wide enough to read.
+
+    The Roster and Locations tabs are typed into by people, so they get the same heading
+    band and the same quiet alternating rows rather than being left as bare grids.
+    """
+    requests = [
+        {
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": tab_id,
+                    "gridProperties": {"hideGridlines": True, "frozenRowCount": 1},
+                },
+                "fields": "gridProperties(hideGridlines,frozenRowCount)",
+            }
+        },
+        _repeat(
+            tab_id,
+            0,
+            0,
+            1,
+            columns,
+            {
+                "backgroundColor": sheets_color(ACCENT),
+                "verticalAlignment": "MIDDLE",
+                "padding": dict(PAD),
+                "textFormat": _text(11, SURFACE, bold=True),
+            },
+        ),
+        _rows(tab_id, 0, 1, HEADING_ROW_HEIGHT),
+    ]
+    for index, width in enumerate(widths):
+        requests.append(_column_width(tab_id, index, width))
+    if banded:
+        requests.append(_banding(tab_id, columns))
+    return requests
+
+
+def support_requests(view, tab_id: int) -> list[dict]:
+    """Shape the Support Requests tab: a title, then a block per day."""
+    columns = len(SUPPORT_HEADER)
+    rows = max(len(view.table), 1)
+    requests = [
+        {
+            "updateSheetProperties": {
+                "properties": {
+                    "sheetId": tab_id,
+                    "gridProperties": {"hideGridlines": True, "frozenRowCount": 1},
+                },
+                "fields": "gridProperties(hideGridlines,frozenRowCount)",
+            }
+        },
+        _repeat(
+            tab_id,
+            0,
+            0,
+            rows,
+            columns,
+            {
+                "backgroundColor": sheets_color(SURFACE),
+                "verticalAlignment": "MIDDLE",
+                "wrapStrategy": "WRAP",
+                "padding": dict(PAD),
+                "textFormat": _text(10),
+            },
+        ),
+        _merge(tab_id, 0, 0, 1, columns),
+        _repeat(
+            tab_id,
+            0,
+            0,
+            1,
+            columns,
+            {
+                "backgroundColor": sheets_color(ACCENT),
+                "padding": dict(PAD),
+                "textFormat": _text(13, SURFACE, bold=True),
+            },
+        ),
+        _rows(tab_id, 0, 1, TITLE_ROW_HEIGHT),
+    ]
+    widths = (150, 250, 160, 50, 220, 60, 70, 60, 60)
+    for index, width in enumerate(widths[:columns]):
+        requests.append(_column_width(tab_id, index, width))
+    for row in view.day_rows:
+        requests += [
+            _merge(tab_id, row, 0, 1, columns),
+            _repeat(
+                tab_id,
+                row,
+                0,
+                1,
+                columns,
+                {
+                    "backgroundColor": sheets_color(ACCENT_SOFT),
+                    "padding": dict(PAD),
+                    "textFormat": _text(12, ACCENT_DARK, bold=True),
+                },
+            ),
+            _rows(tab_id, row, row + 1, HEADING_ROW_HEIGHT),
+        ]
+    for row in view.header_rows:
+        requests += [
+            _repeat(
+                tab_id,
+                row,
+                0,
+                1,
+                columns,
+                {
+                    "backgroundColor": sheets_color(PANEL),
+                    "padding": dict(PAD),
+                    "textFormat": _text(9, MUTED, bold=True),
+                },
+            ),
+            {
+                "updateBorders": {
+                    "range": _range(tab_id, row, 0, 1, columns),
+                    "bottom": {"style": "SOLID", "color": sheets_color(LINE)},
+                }
+            },
+        ]
+    for row in view.quiet_rows:
+        requests.append(
+            _repeat(tab_id, row, 0, 1, columns, {"textFormat": _text(10, FAINT, italic=True)})
+        )
+    return requests
+
+
+def _banding(tab_id: int, columns: int) -> dict:
+    return {
+        "addBanding": {
+            "bandedRange": {
+                "range": {
+                    "sheetId": tab_id,
+                    "startRowIndex": 0,
+                    "startColumnIndex": 0,
+                    "endColumnIndex": columns,
+                },
+                "rowProperties": {
+                    "headerColorStyle": {"rgbColor": sheets_color(ACCENT)},
+                    "firstBandColorStyle": {"rgbColor": sheets_color(SURFACE)},
+                    "secondBandColorStyle": {"rgbColor": sheets_color(PANEL)},
+                },
+            }
+        }
+    }

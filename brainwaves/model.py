@@ -64,10 +64,19 @@ class Cabin:
         return Village.of(self.name)
 
     @property
+    def who(self) -> str:
+        """The counselor, and the co-counselor where there is one."""
+        return " & ".join(part for part in (self.counselor, self.co_counselor) if part)
+
+    @property
     def label(self) -> str:
-        """How the cabin is written on the sheet and down the side of the board."""
-        who = " & ".join(part for part in (self.counselor, self.co_counselor) if part)
-        return f"{self.name} - {who}" if who else self.name
+        """The cabin on one line, for a comment, a dialog or a report."""
+        return f"{self.name} - {self.who}" if self.who else self.name
+
+    @property
+    def sheet_label(self) -> str:
+        """The cabin over two lines, which is how the narrow cabin column reads best."""
+        return f"{self.name}\n{self.who}" if self.who else self.name
 
 
 @dataclass(frozen=True)

@@ -95,18 +95,48 @@ class Workspace:
         return parse_staff_names(workbook.read(self.config.skills_tab))
 
 
-def write_template(workbook: SheetsWorkbook, week: Week, locations) -> None:
-    """Lay out an empty week: four tabs, written and then styled."""
-    first = workbook.spreadsheet.sheet1
-    first.update_title(week_sheet.BOARD_TAB)
+def write_template(workbook: SheetsWorkbook, week: Week, locations, report=None) -> None:
+    """Lay out an empty week: four tabs, written and then styled.
+
+    `report` is called with whatever is being done, so the window can say so. Creating a
+    week is the one thing in Brain Waves slow enough to need telling.
+    """
+    say = report or (lambda _message: None)
+    say("Naming the tabs")
+    workbook.spreadsheet.sheet1.update_title(week_sheet.BOARD_TAB)
     for tab in (week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB, week_sheet.REQUESTS_TAB):
         workbook.clear(tab)
-    workbook.write(week_sheet.BOARD_TAB, week_sheet.render_week(week))
+
+    say("Writing the cabins and locations")
+    support = render_support(week)
     workbook.write(week_sheet.ROSTER_TAB, week_sheet.render_roster(week.cabins))
     workbook.write(week_sheet.LOCATIONS_TAB, week_sheet.render_locations(locations))
-    workbook.write(week_sheet.REQUESTS_TAB, render_support(week))
+    workbook.write(week_sheet.REQUESTS_TAB, support.table)
+
+    say("Writing the board")
+    workbook.write(week_sheet.BOARD_TAB, week_sheet.render_week(week))
+
+    say("Formatting the board")
     workbook.apply(
-        style.board_requests(week, workbook.tab_id(week_sheet.BOARD_TAB), week_sheet.LOCATIONS_TAB)
+        style.board_requests(
+            week,
+            workbook.tab_id(week_sheet.BOARD_TAB),
+            week_sheet.LOCATIONS_TAB,
+            new_sheet=True,
+            size=workbook.size(week_sheet.BOARD_TAB),
+        ),
+        report=say,
+    )
+
+    say("Formatting the other tabs")
+    workbook.apply(
+        [
+            *style.list_tab_requests(
+                workbook.tab_id(week_sheet.ROSTER_TAB), 3, widths=(90, 170, 170)
+            ),
+            *style.list_tab_requests(workbook.tab_id(week_sheet.LOCATIONS_TAB), 1, widths=(260,)),
+            *style.support_requests(support, workbook.tab_id(week_sheet.REQUESTS_TAB)),
+        ]
     )
 
 

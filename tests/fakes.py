@@ -34,11 +34,27 @@ class FakeComments:
                 self.threads[index] = _replace(thread, resolved=True)
 
 
+TAB_IDS = {
+    week_sheet.BOARD_TAB: 0,
+    week_sheet.ROSTER_TAB: 1,
+    week_sheet.LOCATIONS_TAB: 2,
+    week_sheet.REQUESTS_TAB: 3,
+}
+
+
 class FakeWorkbook(CsvWorkbook):
-    """A CSV workbook that also answers the few spreadsheet-shaped questions the store asks."""
+    """A CSV workbook that also answers the few spreadsheet-shaped questions the store asks.
+
+    It keeps the formatting requests it is given. They do nothing to a CSV file, but a test
+    can check that they were built and aimed at the right tab.
+    """
 
     id = "fake-file"
     title = "Cabin Act Sorting - S2W1"
+
+    def __init__(self, root):
+        super().__init__(root)
+        self.applied: list[dict] = []
 
     class _Spreadsheet:
         def __init__(self, workbook):
@@ -56,7 +72,10 @@ class FakeWorkbook(CsvWorkbook):
         return self._Spreadsheet(self)
 
     def tab_id(self, tab):
-        return 0 if tab == week_sheet.BOARD_TAB else 1
+        return TAB_IDS.get(tab, 9)
+
+    def apply(self, requests, report=None):
+        self.applied.extend(requests)
 
 
 class FakeDrive:

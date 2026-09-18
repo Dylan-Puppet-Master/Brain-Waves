@@ -42,7 +42,7 @@ class Workbook(Protocol):
     def size(self, tab: str) -> tuple[int, int]:
         """How many rows and columns the tab holds, which is not how many are filled."""
 
-    def apply(self, requests: list[dict]) -> None:
+    def apply(self, requests: list[dict], report=None) -> None:
         """Send raw Sheets API requests. Where formatting is not possible, no-op."""
 
 
@@ -91,7 +91,7 @@ class CsvWorkbook:
         table = self.read(tab) if (self.root / f"{tab}.csv").exists() else []
         return len(table), max((len(row) for row in table), default=0)
 
-    def apply(self, requests: list[dict]) -> None:
+    def apply(self, requests: list[dict], report=None) -> None:
         """CSV files carry no formatting."""
 
     def _save(self, tab: str, grid: Table) -> None:
@@ -186,12 +186,15 @@ class SheetsWorkbook:
             self.spreadsheet.add_worksheet(tab, rows=200, cols=60)
             self._tabs = None
 
-    def apply(self, requests: list[dict]) -> None:
+    def apply(self, requests: list[dict], report=None) -> None:
         """Send raw Sheets API requests, in batches small enough not to be refused."""
-        for start in range(0, len(requests), BATCH_SIZE):
-            chunk = requests[start : start + BATCH_SIZE]
-            if chunk:
-                self.spreadsheet.batch_update({"requests": chunk})
+        batches = [
+            requests[start : start + BATCH_SIZE] for start in range(0, len(requests), BATCH_SIZE)
+        ]
+        for number, chunk in enumerate(batches, start=1):
+            if report and len(batches) > 1:
+                report(f"Formatting the board ({number} of {len(batches)})")
+            self.spreadsheet.batch_update({"requests": chunk})
 
 
 def a1_to_index(cell: str) -> tuple[int, int]:

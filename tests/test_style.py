@@ -92,3 +92,54 @@ def _ranges(body):
     elif isinstance(body, list):
         for item in body:
             yield from _ranges(item)
+
+
+def test_making_a_week_formats_every_tab_it_makes(tmp_path, week):
+    from brainwaves.workspace import write_template
+    from tests.fakes import TAB_IDS, FakeWorkbook
+
+    workbook = FakeWorkbook(tmp_path)
+    write_template(workbook, week, ("Hot Rocks",))
+    aimed_at = {
+        body["range"]["sheetId"] if "range" in body else body["properties"]["sheetId"]
+        for request in workbook.applied
+        for body in request.values()
+        if isinstance(body, dict) and ("range" in body or "properties" in body)
+    }
+    assert aimed_at >= set(TAB_IDS.values())
+
+
+def test_making_a_week_sends_no_request_without_its_field_mask(tmp_path, week):
+    from brainwaves.workspace import write_template
+    from tests.fakes import FakeWorkbook
+
+    workbook = FakeWorkbook(tmp_path)
+    write_template(workbook, week, ("Hot Rocks",))
+    assert workbook.applied
+    missing = [
+        kind
+        for request in workbook.applied
+        for kind, body in request.items()
+        if kind in NEEDS_FIELDS and not body.get("fields")
+    ]
+    assert missing == []
+
+
+def test_making_a_week_colours_the_risk_cells(tmp_path, week):
+    from brainwaves.workspace import write_template
+    from tests.fakes import FakeWorkbook
+
+    workbook = FakeWorkbook(tmp_path)
+    write_template(workbook, week, ("Hot Rocks",))
+    rules = [r for r in workbook.applied if "addConditionalFormatRule" in r]
+    assert len(rules) == 3  # red, yellow and green; none needs no colour
+
+
+def test_making_a_week_reports_what_it_is_doing(tmp_path, week):
+    from brainwaves.workspace import write_template
+    from tests.fakes import FakeWorkbook
+
+    said = []
+    write_template(FakeWorkbook(tmp_path), week, ("Hot Rocks",), report=said.append)
+    assert "Writing the board" in said
+    assert len(said) >= 4

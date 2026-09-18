@@ -18,7 +18,7 @@ from brainwaves import comments as binding
 from brainwaves.model import DAY_COLUMNS, CabinAct, Comment, Week
 from brainwaves.names import new_card_id
 from brainwaves.sheets import week as week_sheet
-from brainwaves.sheets.style import board_requests
+from brainwaves.sheets.style import board_requests, support_requests
 from brainwaves.sheets.support import render_support
 from brainwaves.workspace import WeekSheet, Workspace
 
@@ -213,8 +213,10 @@ class BoardStore:
         self._write_support()
 
     def _write_support(self) -> None:
+        view = render_support(self.week)
         self.workbook.clear(week_sheet.REQUESTS_TAB)
-        self.workbook.write(week_sheet.REQUESTS_TAB, render_support(self.week))
+        self.workbook.write(week_sheet.REQUESTS_TAB, view.table)
+        self.workbook.apply(support_requests(view, self.workbook.tab_id(week_sheet.REQUESTS_TAB)))
 
     def _rewrite_board(self) -> None:
         self.workbook.clear(week_sheet.BOARD_TAB)

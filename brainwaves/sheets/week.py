@@ -90,7 +90,7 @@ def render_week(week: Week) -> Table:
     for index in range(DAY_COLUMNS, week.columns):
         grid[layout.DAY_ROW][layout.column_origin(index)] = _overflow_name(index)
     for cabin_index, cabin in enumerate(week.cabins):
-        grid[layout.cabin_row(cabin_index)][layout.CABIN_COLUMN] = cabin.label
+        grid[layout.cabin_row(cabin_index)][layout.CABIN_COLUMN] = cabin.sheet_label
         for column in range(week.columns):
             block = card_block(week.card(cabin.name, column))
             row, left = layout.card_origin(cabin_index, column)
