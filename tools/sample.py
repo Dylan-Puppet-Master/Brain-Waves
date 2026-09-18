@@ -104,6 +104,13 @@ def sample_week() -> Week:
             location="Field - Tiny",
             armory=True,
         ),
+        ("M3", 2): CabinAct(
+            id="c2",
+            title="Hot rocks and hot chocolate",
+            description="Sit in the hot rocks until the marshmallows run out",
+            location="Hot Rocks",
+            heroes=("Vic",),
+        ),
         ("M3", 5): CabinAct(
             id="k1",
             title="Squishy scientists",
@@ -116,6 +123,7 @@ def sample_week() -> Week:
             description="Build a shelter behind Pine out of cardboard",
             materials=("twine", "duct tape", "cardboard x15"),
             location="Pine",
+            heroes=("Dylan",),
         ),
         ("P2", 3): CabinAct(
             id="e1",

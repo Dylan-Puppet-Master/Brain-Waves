@@ -29,6 +29,7 @@ Google Drive ──┬── comments ──▶ google/comments.py ──▶ com
 | `brainwaves/sheets/` | The Board format: geometry, parse, render, formatting, derived tabs |
 | `brainwaves/google/` | Sign-in, Drive browsing, Drive comments |
 | `brainwaves/comments.py` | Which card a Drive thread is about |
+| `brainwaves/conflicts.py` | Two cabins wanting one place or one HERO on one day |
 | `brainwaves/workspace.py` | Finding, opening and creating week sheets |
 | `brainwaves/store.py` | One loaded week, every change to it, and the queue of writes |
 | `brainwaves/app/` | The desktop window |

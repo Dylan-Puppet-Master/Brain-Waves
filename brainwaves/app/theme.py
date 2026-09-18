@@ -12,6 +12,7 @@ from brainwaves.palette import (
     ACCENT,
     ACCENT_DARK,
     ACCENT_SOFT,
+    CLASH,
     FAINT,
     INK,
     LINE,
@@ -188,6 +189,7 @@ QFrame#card {{
 QFrame#card:hover {{ border-color: #b8c3cf; }}
 QFrame#card[selected="true"] {{ border: 2px solid {ACCENT}; }}
 QFrame#card[lifted="true"] {{ background: {PANEL}; }}
+QFrame#card[clash="true"] {{ border: 2px solid {CLASH}; background: #fdf3f2; }}
 QLabel#cardTitle {{ font-size: 15px; font-weight: 700; }}
 QLabel#cardDescription {{ color: {MUTED}; font-size: 13px; }}
 QLabel#cardLocation {{ color: {INK}; font-size: 13px; font-weight: 600; }}
@@ -268,6 +270,25 @@ QLabel#threadText {{ font-size: 13px; }}
 QLabel#replyAuthor {{ color: {MUTED}; font-weight: 600; font-size: 12px; }}
 QLabel#hint {{ color: {FAINT}; font-size: 12px; }}
 QLabel#sectionTitle {{ color: {MUTED}; font-size: 11px; font-weight: 700; letter-spacing: 1px; }}
+
+QTableWidget {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 6px;
+    alternate-background-color: {PANEL};
+    gridline-color: transparent;
+}}
+QTableWidget::item {{ padding: 5px 7px; }}
+QTableWidget::item:selected {{ background: {ACCENT_SOFT}; color: {INK}; }}
+QHeaderView::section {{
+    background: {PANEL};
+    border: none;
+    border-bottom: 1px solid {LINE};
+    color: {MUTED};
+    font-size: 11px;
+    font-weight: 700;
+    padding: 5px 7px;
+}}
 
 QListWidget {{ background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; }}
 QListWidget::item {{ padding: 5px 8px; }}

@@ -48,6 +48,21 @@ so and offers to make one; press **Start New Week** and the sheet is created fro
 template, with the cabins and locations of the week you had open. It refuses if that week
 already exists, so pressing it twice cannot make two.
 
+## Clashes
+
+Every cabin act runs in the same hour, so two cabins on the same day cannot both be at Low
+Ropes 1 and cannot both have Dylan. The **Clashes** pane, under the comments, lists every
+one of those: the day, what is wanted twice, and which cabins want it. Choose a row and the
+cards it is about blink red on the board, which is scrolled to the first of them.
+
+Nothing is prevented. Two cabins at the lake may be perfectly fine, and the Brain is the one
+who knows; the pane only makes sure nobody finds out on the day. A clash disappears from the
+list as soon as one of the two cards is changed or moved.
+
+Activities in the Extra columns are left out, because an activity with no day cannot clash
+with anything. Locations that say nothing about where a cabin will be — `_Other` and
+`Wandering` — are left out too.
+
 ## Knowing that something is happening
 
 A thin bar sweeps under the toolbar while a change is on its way to Google, and the line at

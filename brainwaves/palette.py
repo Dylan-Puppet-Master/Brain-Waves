@@ -15,6 +15,7 @@ ACCENT = "#0f766e"
 ACCENT_SOFT = "#e3f1ef"
 ACCENT_DARK = "#0b5a54"
 WARN = "#b45309"
+CLASH = "#c0392b"  # two cabins wanting the same thing at the same time
 
 VILLAGE_COLORS = {
     "Pine": ("#3f7a4e", "#e8f2eb"),

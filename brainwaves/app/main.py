@@ -28,12 +28,14 @@ from brainwaves import comments as binding
 from brainwaves.app.activity import sweeping_bar
 from brainwaves.app.board import BoardView
 from brainwaves.app.comment_panel import CommentPanel
+from brainwaves.app.conflict_panel import ConflictPanel
 from brainwaves.app.dialogs import FolderDialog, RosterDialog
 from brainwaves.app.editor import CardDialog
 from brainwaves.app.sync import JobQueue
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.welcome import WelcomePage
 from brainwaves.config import Config, State, load_config, load_state, save_state, with_week
+from brainwaves.conflicts import find_conflicts
 from brainwaves.google import auth
 from brainwaves.model import DAY_COLUMNS, EXTRA, CabinAct, WeekId
 from brainwaves.store import BoardStore, week_summary
@@ -111,6 +113,15 @@ class MainWindow(QMainWindow):
         dock.setWidget(self.comments)
         dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
         self.addDockWidget(Qt.RightDockWidgetArea, dock)
+
+        self.conflicts = ConflictPanel()
+        self.conflicts.picked.connect(self.board.blink)
+        clashes = QDockWidget("Clashes", self)
+        clashes.setObjectName("clashesDock")
+        clashes.setWidget(self.conflicts)
+        clashes.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
+        self.splitDockWidget(dock, clashes, Qt.Vertical)
+        self.resizeDocks([dock, clashes], [3, 2], Qt.Vertical)
 
         self._build_toolbar()
         self.poll = QTimer(self)
@@ -439,6 +450,7 @@ class MainWindow(QMainWindow):
         counts = binding.count_by_card(self.store.comments)
         self.board.show_week(self.store.week, counts)
         self.board.select(self.selected_card)
+        self.conflicts.show_conflicts(find_conflicts(self.store.week))
         self._draw_comments()
         self.pages.setCurrentWidget(self.board)
 

@@ -4,7 +4,7 @@ The day headings and the cabin column are separate scroll areas kept in step wit
 board's own, so the week reads the same at column eight as it does at column one.
 """
 
-from PySide6.QtCore import Qt, Signal
+from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -19,12 +19,20 @@ from PySide6.QtWidgets import (
 )
 
 from brainwaves.app.card import AddCard, CardWidget, SlotWidget
-from brainwaves.app.theme import CABIN_WIDTH, CARD_HEIGHT, CARD_WIDTH, SLOT_PADDING, village_pair
+from brainwaves.app.theme import (
+    CABIN_WIDTH,
+    CARD_HEIGHT,
+    CARD_WIDTH,
+    SLOT_PADDING,
+    restyle,
+    village_pair,
+)
 from brainwaves.model import DAY_COLUMNS, EXTRA, Week
 
 SLOT_WIDTH = CARD_WIDTH + 2 * SLOT_PADDING
 SLOT_HEIGHT = CARD_HEIGHT + 2 * SLOT_PADDING
 HEADER_HEIGHT = 68
+BLINK_MILLISECONDS = 550
 
 
 class BoardView(QWidget):
@@ -43,6 +51,11 @@ class BoardView(QWidget):
         self.cards: dict[str, CardWidget] = {}
         self.slots: list[SlotWidget] = []
         self.selected: str | None = None
+        self.blinking: tuple[str, ...] = ()
+        self._lit = False
+        self._blink = QTimer(self)
+        self._blink.setInterval(BLINK_MILLISECONDS)
+        self._blink.timeout.connect(self._toggle)
         self._build()
 
     def _build(self) -> None:
@@ -101,6 +114,40 @@ class BoardView(QWidget):
         self._fill_side(week)
         self._fill_grid(week, comment_counts)
         self.select(self.selected)
+        self._show_blinking()
+
+    def blink(self, card_ids) -> None:
+        """Ring these cards in red, on and off, until something else is chosen.
+
+        The board is also scrolled to the first of them: a card blinking somewhere off the
+        side of the screen is no use to anyone.
+        """
+        self.blinking = tuple(card_ids)
+        self._lit = True
+        self._show_blinking()
+        if not self.blinking:
+            self._blink.stop()
+            return
+        self._blink.start()
+        self.reveal(self.blinking[0])
+
+    def reveal(self, card_id: str) -> None:
+        """Scroll until a card can be seen."""
+        widget = self.cards.get(card_id)
+        if widget is not None:
+            self.board.ensureWidgetVisible(widget, SLOT_WIDTH // 2, SLOT_HEIGHT // 2)
+
+    def _toggle(self) -> None:
+        self._lit = not self._lit
+        self._show_blinking()
+
+    def _show_blinking(self) -> None:
+        lit = set(self.blinking) if self._lit else set()
+        for identifier, widget in self.cards.items():
+            wanted = identifier in lit
+            if widget.property("clash") != wanted:
+                widget.setProperty("clash", wanted)
+                restyle(widget)
 
     def _follow_board(self) -> None:
         """Put the heading strips back where the board is."""

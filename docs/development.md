@@ -9,7 +9,7 @@ brainwaves/
                                      what a new week starts with
   sheets/                            layout, parse and render, formatting, Support Requests, staff names
   google/                            auth, Drive, Drive comments, retrying a wobble
-  comments.py                        matching Drive threads to cards
+  comments.py, conflicts.py          matching Drive threads to cards, finding clashes
   workspace.py                       find, open and create week sheets
   store.py                           one loaded week and every change to it
   app/                               the PySide6 window

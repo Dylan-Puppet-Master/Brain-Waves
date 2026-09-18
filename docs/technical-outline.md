@@ -27,6 +27,7 @@ Google Drive ──┬── comments ──▶ google/comments.py ──▶ com
 | `brainwaves/sheets/` | The Board format: geometry, parse, render, formatting, the derived Support Requests tab |
 | `brainwaves/google/` | Sign-in, Drive browsing, Drive comments |
 | `brainwaves/comments.py` | Which card a Drive thread is about |
+| `brainwaves/conflicts.py` | Two cabins wanting one place or one HERO on one day |
 | `brainwaves/workspace.py` | Finding, opening and creating week sheets |
 | `brainwaves/store.py` | One loaded week, every change to it, and the queue of writes |
 | `brainwaves/app/` | The window |
@@ -44,6 +45,11 @@ So a thread is anchored to the card's label cell — the one that reads `Activit
 written once when the board is laid out and never again — and a card write goes only to the
 value and flag columns beside it. That is also why laying the board out again clears only
 what lies beyond it rather than wiping the tab.
+
+**A clash is reported, never prevented.** `conflicts.py` is arithmetic on a `Week` and
+nothing else: no network, no window, no state. The Brain may well look at two cabins on the
+lake and decide it is fine, so the program does not argue — it just makes sure the choice is
+a choice rather than a surprise on the day.
 
 **Comments are Google's, not ours.** A tab of our own would have been simpler to write and
 worse to use: no notifications, no sidebar, no author. The cost is that anchoring a new

@@ -14,9 +14,11 @@ locked inside the program.
    description, materials, location, notes, risk, what it needs, and which HEROES.
 3. The VL Brain drags cards along a cabin's row until each day looks right. Anything that
    has not found a day sits in the **Extra** columns on the right.
-4. Anyone with a question clicks the card and writes a comment. The thread appears in the
+4. The **Clashes** pane says whether two cabins have asked for the same place or the same
+   HERO on the same day. Choose a row and the cards blink.
+5. Anyone with a question clicks the card and writes a comment. The thread appears in the
    Google Sheets comment sidebar too, so people who prefer the sheet can answer there.
-5. The **Support Requests** tab of the sheet rewrites itself as the board changes. That is
+6. The **Support Requests** tab of the sheet rewrites itself as the board changes. That is
    the tab the Puppet Master reads to know what each day asks of non-counselor staff.
 
 ## Where things live

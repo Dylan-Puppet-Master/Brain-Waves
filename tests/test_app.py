@@ -463,3 +463,92 @@ def test_starting_a_week_without_a_folder_asks_for_one_first(window, monkeypatch
     monkeypatch.setattr(window, "link_folder", lambda: asked.append(True))
     window.start_new_week()
     assert asked == [True]
+
+
+def clashing_week(week):
+    from brainwaves.model import CabinAct
+
+    week = week.place("M1", 1, CabinAct(id="one", title="Spa", location="Hot Rocks"))
+    return week.place("P1", 1, CabinAct(id="two", title="Soak", location="Hot Rocks"))
+
+
+def test_the_clashes_pane_lists_what_two_cabins_both_want(app, store):
+    from brainwaves.app.conflict_panel import ConflictPanel
+    from brainwaves.conflicts import find_conflicts
+
+    panel = ConflictPanel()
+    panel.show_conflicts(find_conflicts(clashing_week(store.week)))
+    assert panel.table.rowCount() == 1
+    assert panel.table.item(0, 0).text() == "Tuesday"
+    assert "Hot Rocks" in panel.table.item(0, 1).text()
+    assert panel.table.item(0, 2).text() in {"M1, P1", "P1, M1"}
+
+
+def test_the_clashes_pane_says_so_when_nothing_clashes(app, store):
+    from brainwaves.app.conflict_panel import NOTHING, ConflictPanel
+
+    panel = ConflictPanel()
+    panel.show_conflicts([])
+    assert panel.summary.text() == NOTHING
+    assert panel.table.isHidden() or panel.table.rowCount() == 0
+
+
+def test_choosing_a_clash_names_the_cards_it_is_about(app, store):
+    from brainwaves.app.conflict_panel import ConflictPanel
+    from brainwaves.conflicts import find_conflicts
+
+    panel = ConflictPanel()
+    picked = []
+    panel.picked.connect(lambda cards: picked.append(set(cards)))
+    panel.show_conflicts(find_conflicts(clashing_week(store.week)))
+    panel.table.selectRow(0)
+    assert picked[-1] == {"one", "two"}
+
+
+def test_a_clash_that_gets_settled_stops_being_pointed_at(app, store):
+    from brainwaves.app.conflict_panel import ConflictPanel
+    from brainwaves.conflicts import find_conflicts
+
+    panel = ConflictPanel()
+    picked = []
+    panel.picked.connect(lambda cards: picked.append(tuple(cards)))
+    panel.show_conflicts(find_conflicts(clashing_week(store.week)))
+    panel.table.selectRow(0)
+    panel.show_conflicts([])
+    assert picked[-1] == ()
+
+
+def test_the_cards_of_a_chosen_clash_blink(app, store):
+    board = BoardView()
+    board.show_week(clashing_week(store.week), {})
+    board.blink(("one", "two"))
+    assert board.cards["one"].property("clash")
+    assert not board.cards["aaa111"].property("clash")
+    board._toggle()
+    assert not board.cards["one"].property("clash")
+    board._toggle()
+    assert board.cards["one"].property("clash")
+
+
+def test_blinking_survives_the_board_being_redrawn(app, store):
+    week = clashing_week(store.week)
+    board = BoardView()
+    board.show_week(week, {})
+    board.blink(("one", "two"))
+    board.show_week(week, {})
+    assert board.cards["one"].property("clash")
+
+
+def test_choosing_nothing_stops_the_blinking(app, store):
+    board = BoardView()
+    board.show_week(clashing_week(store.week), {})
+    board.blink(("one",))
+    board.blink(())
+    assert not board.cards["one"].property("clash")
+    assert not board._blink.isActive()
+
+
+def test_the_window_shows_clashes_when_it_draws(window, store):
+    store.week = clashing_week(store.week)
+    window._draw()
+    assert window.conflicts.table.rowCount() == 1

@@ -42,6 +42,7 @@ def main(destination: Path) -> None:
     window.sheet_label.setText("Cabin Act Sorting - S2W1 - Cabin Acts 2026")
     window._draw()
     window.select_card("a1")
+    window.conflicts.table.selectRow(0)
     window._set_busy("")
     window.show()
     for _ in range(8):
