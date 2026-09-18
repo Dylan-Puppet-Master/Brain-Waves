@@ -62,6 +62,7 @@ class MainWindow(QMainWindow):
         self.workspace: Workspace | None = None
         self.store: BoardStore | None = None
         self.selected_card: str | None = None
+        self.comments_pending = False
         self.setWindowTitle("Brain Waves")
         self.resize(1440, 900)
 
@@ -303,26 +304,38 @@ class MainWindow(QMainWindow):
         if self.store is None:
             return
         self.store.add_comment(card_id, text)
-        self._push("Posting comment...")
+        self._push_comment("Posting comment...")
 
     def reply_to_comment(self, comment_id: str, text: str) -> None:
         """Add a message to a thread."""
         if self.store is None:
             return
         self.store.reply(comment_id, text)
-        self._push("Posting reply...")
+        self._push_comment("Posting reply...")
 
     def resolve_comment(self, comment_id: str) -> None:
         """Close a thread."""
         if self.store is None:
             return
         self.store.resolve(comment_id)
-        self._push("Resolving...")
+        self._push_comment("Resolving...")
 
-    def check_for_updates(self) -> None:
-        """Ask GitHub whether a newer Brain Waves has been published."""
-        self._set_busy("Checking for updates...")
-        self.jobs.submit("update-check", lambda: latest_release(self.config.releases_url))
+    def _push_comment(self, message: str) -> None:
+        """Send a comment change, and redraw once Google has it: only then is it real."""
+        self.comments_pending = True
+        self._push(message)
+
+    def check_for_updates(self, quietly: bool = False) -> None:
+        """Ask GitHub whether a newer Brain Waves has been published.
+
+        Quietly, on startup: nothing is said unless there is something to say.
+        """
+        if not quietly:
+            self._set_busy("Checking for updates...")
+        self.jobs.submit(
+            "update-quiet" if quietly else "update-check",
+            lambda: latest_release(self.config.releases_url),
+        )
 
     def _install_update(self, release) -> None:
         answer = QMessageBox.question(
@@ -395,14 +408,17 @@ class MainWindow(QMainWindow):
             self._draw()
         elif name == "update-check":
             self._checked(result)
+        elif name == "update-quiet" and result is not None:
+            self._install_update(result)
         elif name == "update-install":
             QMessageBox.information(
                 self, "Update installed", f"Restart Brain Waves to use it.\n\n{result}"
             )
         if name in {"flush", "reload", "update-check"}:
             self._set_busy("")
-        if name == "reload":
-            self._draw_comments()
+        if name == "reload" or (name == "flush" and self.comments_pending):
+            self.comments_pending = False
+            self._draw()
 
     def _opened(self, store: BoardStore | None) -> None:
         week_id = WeekId(self.state.session, self.state.week)
@@ -422,6 +438,7 @@ class MainWindow(QMainWindow):
         self._draw()
         self._set_busy("")
         self.poll.start()
+        self.check_for_updates(quietly=True)
 
     def _created(self, week_id: WeekId) -> None:
         self.session_box.setValue(week_id.session)
@@ -438,6 +455,8 @@ class MainWindow(QMainWindow):
         self._install_update(release)
 
     def _job_failed(self, name: str, message: str) -> None:
+        if name == "update-quiet":
+            return  # a failed startup check is not worth interrupting anyone for
         self._set_busy("")
         if name == "create" and "already" in message:
             QMessageBox.warning(self, "That week already exists", message)

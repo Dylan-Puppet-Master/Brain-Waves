@@ -33,8 +33,15 @@ CARD_ROW_HEIGHT = 28
 HEADING_ROW_HEIGHT = 34
 
 
-def board_requests(week: Week, tab_id: int, locations_tab: str) -> list[dict]:
-    """Every request needed to shape the Board tab for this week's shape."""
+def board_requests(
+    week: Week, tab_id: int, locations_tab: str, new_sheet: bool = False
+) -> list[dict]:
+    """Every request needed to shape the Board tab for this week's shape.
+
+    `new_sheet` also adds the conditional formats that colour the risk cells. They cover
+    every row and column from the first card onward, so they never need adding again;
+    adding them twice would leave the sheet with two copies of each rule.
+    """
     rows, columns = layout.grid_size(len(week.cabins), week.columns)
     return [
         *_frame(tab_id, rows, columns),
@@ -43,7 +50,7 @@ def board_requests(week: Week, tab_id: int, locations_tab: str) -> list[dict]:
         *_cabin_column(tab_id, week),
         *(_card_column(tab_id, week, column, locations_tab) for column in range(week.columns)),
         *_borders(tab_id, week),
-        *_risk_colors(tab_id, week),
+        *(_risk_colors(tab_id) if new_sheet else []),
     ]
 
 
@@ -352,18 +359,19 @@ def _borders(tab_id: int, week: Week) -> list[dict]:
     return requests
 
 
-def _risk_colors(tab_id: int, week: Week) -> list[dict]:
-    """Colour the risk cell by what it says, so a red week is visible from across the room."""
-    height = len(week.cabins) * layout.CARD_ROWS
+def _risk_colors(tab_id: int) -> list[dict]:
+    """Colour a risk cell by what it says, so a red week is visible from across the room.
+
+    The ranges are open ended: every row and column from the first card onward. A risk
+    letter is the whole of its cell and appears nowhere else on the board, and growing the
+    board does not need the rules rewritten.
+    """
     ranges = [
-        _range(
-            tab_id,
-            layout.FIRST_CARD_ROW,
-            layout.column_origin(column) + layout.FLAG_VALUE_OFFSET,
-            height,
-            1,
-        )
-        for column in range(week.columns)
+        {
+            "sheetId": tab_id,
+            "startRowIndex": layout.FIRST_CARD_ROW,
+            "startColumnIndex": layout.FIRST_CARD_COLUMN,
+        }
     ]
     return [
         {

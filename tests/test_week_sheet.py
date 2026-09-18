@@ -47,13 +47,13 @@ def test_an_empty_slot_renders_as_labels_only():
     assert block[layout.DESCRIPTION][layout.FLAG_VALUE_OFFSET] == Risk.NONE.value
 
 
-def test_a_card_with_no_id_on_the_sheet_is_given_one(week):
+def test_a_card_with_no_id_on_the_sheet_reads_as_having_none(week):
     grid = render_week(week)
     index = [c.name for c in week.cabins].index("M1")
     row, left = layout.card_origin(index, 0)
     grid[row][left + layout.ID_OFFSET] = ""
     parsed = parse_week(week.id, grid, render_roster(week.cabins))
-    assert parsed.card("M1", 0).id
+    assert parsed.card("M1", 0).id == ""
 
 
 def test_subtitles_survive_the_round_trip(week):

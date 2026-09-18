@@ -17,7 +17,7 @@ from brainwaves.model import (
     WeekId,
     sort_cabins,
 )
-from brainwaves.names import join_list, new_card_id, split_list
+from brainwaves.names import join_list, split_list
 from brainwaves.sheets import layout
 from brainwaves.sheets.source import LoadError, Table, cell, checkbox, index_to_a1
 
@@ -49,7 +49,11 @@ def parse_week(week_id: WeekId, board: Table, roster: Table) -> Week:
 
 
 def parse_card(board: Table, cabin_index: int, column: int) -> CabinAct | None:
-    """One card block, or None where the slot is empty."""
+    """One card block, or None where the slot is empty.
+
+    A card the sheet holds no id for comes back with an empty id; `BoardStore.reload`
+    gives it one and writes it back.
+    """
     row, left = layout.card_origin(cabin_index, column)
 
     def value(offset: int) -> str:
@@ -59,7 +63,7 @@ def parse_card(board: Table, cabin_index: int, column: int) -> CabinAct | None:
         return checkbox(cell(board, row + offset, left + layout.FLAG_VALUE_OFFSET))
 
     card = CabinAct(
-        id=cell(board, row, left + layout.ID_OFFSET) or new_card_id(),
+        id=cell(board, row, left + layout.ID_OFFSET),
         title=value(layout.TITLE),
         description=value(layout.DESCRIPTION),
         materials=split_list(value(layout.MATERIALS)),

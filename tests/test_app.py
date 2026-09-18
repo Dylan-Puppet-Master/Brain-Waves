@@ -205,3 +205,64 @@ def _would_accept(slot: SlotWidget, cabin: str, column: int) -> bool:
     data = QMimeData()
     data.setData(MIME, f"{cabin}|{column}".encode())
     return _from_cabin(Event(data), slot.cabin)
+
+
+@pytest.fixture
+def window(app, tmp_path, monkeypatch, store):
+    from brainwaves.app.main import MainWindow
+    from brainwaves.config import Config
+
+    monkeypatch.setenv("BRAINWAVES_DATA", str(tmp_path / "data"))
+    made = MainWindow(Config())
+    made.store = store
+    made._draw()
+    yield made
+    made.jobs.stop()
+
+
+def test_the_window_draws_the_week_it_is_given(window, store):
+    assert set(window.board.cards) == {"aaa111", "bbb222", "ccc333"}
+    assert window.pages.currentWidget() is window.board
+
+
+def test_a_swap_moves_the_cards_and_reaches_the_sheet(window, store):
+    window.swap_cards("M1", 0, 3)
+    assert store.week.card("M1", 3).id == "aaa111"
+    assert window.board.cards["aaa111"].column == 3
+    window.jobs.stop()
+    store.reload()
+    assert store.week.card("M1", 3).id == "aaa111"
+
+
+def test_a_swap_with_itself_changes_nothing(window, store):
+    window.swap_cards("M1", 0, 0)
+    assert store.week.card("M1", 0).id == "aaa111"
+    assert store.pending == []
+
+
+def test_a_subtitle_reaches_the_week(window, store):
+    window.set_subtitle(3, "Pizza Day")
+    assert store.week.days[3].subtitle == "Pizza Day"
+
+
+def test_an_unchanged_subtitle_is_not_written(window, store):
+    window.set_subtitle(3, "")
+    assert store.pending == []
+
+
+def test_another_unplaced_column_widens_the_board(window, store):
+    before = store.week.columns
+    window.add_overflow()
+    assert store.week.columns == before + 1
+    assert len(window.board.slots) == len(store.week.cabins) * (before + 1)
+
+
+def test_selecting_a_card_points_the_comment_panel_at_it(window, store):
+    window.select_card("ccc333")
+    assert window.comments.heading.text() == "Pirate ship battle"
+    assert "P1" in window.comments.where.text()
+
+
+def test_the_status_line_says_how_full_the_week_is(window, store):
+    window._set_busy("")
+    assert "days filled" in window.status.text()

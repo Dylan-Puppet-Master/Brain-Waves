@@ -11,6 +11,7 @@ from dataclasses import replace
 
 from brainwaves import comments as binding
 from brainwaves.model import DAY_COLUMNS, CabinAct, Comment, Week
+from brainwaves.names import new_card_id
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.style import board_requests
 from brainwaves.sheets.support import render_support
@@ -59,10 +60,20 @@ class BoardStore:
     def reload(self) -> bool:
         """Read the sheet and the comments again. True if anything on the board changed."""
         fresh = self.workspace.read(self.workbook, self.week.id)
-        changed = week_sheet.render_week(fresh.week) != week_sheet.render_week(self.week)
+        changed = _contents(fresh.week) != _contents(self.week)
         self.sheet, self.week, self.locations = fresh, fresh.week, fresh.locations
+        self._adopt_new_cards()
         self.reload_comments()
         return changed
+
+    def _adopt_new_cards(self) -> None:
+        """Give an id to every card typed straight onto the sheet, and write it back."""
+        nameless = [slot for slot, card in self.week.cards.items() if not card.id]
+        for cabin, column in nameless:
+            card = self.week.card(cabin, column)
+            self.week = self.week.place(cabin, column, replace(card, id=new_card_id()))
+        if nameless:
+            self._queue(lambda slots=nameless: self._write_cards(slots))
 
     def reload_comments(self) -> None:
         """Read the Drive threads and match them to cards."""
@@ -180,6 +191,12 @@ class BoardStore:
             )
         )
         self._write_support()
+
+
+def _contents(week: Week) -> tuple:
+    """What a poll compares. Card ids are left out: a new one is not a change to the week."""
+    cards = {slot: replace(card, id="") for slot, card in week.cards.items()}
+    return (tuple(sorted(cards.items())), week.days, week.cabins, week.overflow_columns)
 
 
 def week_summary(week: Week) -> str:

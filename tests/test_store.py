@@ -105,6 +105,35 @@ def test_a_change_made_elsewhere_is_noticed(tmp_path, week):
     assert store.week.card("C1", 2).title == "Blacksmithing"
 
 
+def test_a_card_typed_onto_the_sheet_is_given_an_id_that_sticks(tmp_path, week):
+    store = store_for(tmp_path, week)
+    index = [c.name for c in store.week.cabins].index("O1")
+    store.workbook.write(
+        week_sheet.BOARD_TAB,
+        [["Activity", "Canoe the lake", "Van", "FALSE", ""]],
+        week_sheet.card_range(index, 2),
+    )
+    store.reload()
+    given = store.week.card("O1", 2).id
+    assert given
+    store.flush()
+    store.reload()
+    assert store.week.card("O1", 2).id == given
+
+
+def test_a_new_card_id_is_not_reported_as_a_change(tmp_path, week):
+    store = store_for(tmp_path, week)
+    index = [c.name for c in store.week.cabins].index("O1")
+    store.workbook.write(
+        week_sheet.BOARD_TAB,
+        [["Activity", "Canoe the lake", "Van", "FALSE", ""]],
+        week_sheet.card_range(index, 2),
+    )
+    assert store.reload() is True
+    store.flush()
+    assert store.reload() is False
+
+
 def test_staff_names_come_from_the_skills_doc(tmp_path, week):
     store = store_for(tmp_path, week)
     store.load_staff()
