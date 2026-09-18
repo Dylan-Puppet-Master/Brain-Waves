@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "brainwaves"
+version = "0.1.0"
+description = "Cabin activity scheduling for Camp Augusta"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "PySide6>=6.6",
+    "gspread>=6.0",
+    "google-api-python-client>=2.120",
+    "google-auth-oauthlib>=1.2",
+    "platformdirs>=4.2",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5", "mkdocs-material>=9.5", "pyinstaller>=6.6"]
+
+[project.scripts]
+brainwaves = "brainwaves.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["brainwaves*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "D"]
+ignore = ["D100", "D104", "D105", "D107", "D203", "D213", "D401"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["D", "E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
