@@ -12,7 +12,7 @@ from brainwaves.app.board import BoardView
 from brainwaves.app.card import MIME, CardWidget, SlotWidget
 from brainwaves.app.chips import ChipEditor
 from brainwaves.app.comment_panel import CommentPanel
-from brainwaves.app.dialogs import RosterDialog
+from brainwaves.app.dialogs import FolderDialog, RosterDialog
 from brainwaves.app.editor import CardDialog
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.widgets import when_phrase
@@ -555,3 +555,94 @@ def test_the_window_shows_clashes_when_it_draws(window, store):
     store.week = clashing_week(store.week)
     window._draw()
     assert window.conflicts.table.rowCount() == 1
+
+
+class FakeDriveTree:
+    """A Drive with My Drive, a folder shared with you, and a shared drive."""
+
+    def __init__(self):
+        from brainwaves.google.drive import MY_DRIVE, SHARED_WITH_ME, DriveItem
+
+        self.tree = {
+            MY_DRIVE: [DriveItem("mine-1", "My cabin acts")],
+            SHARED_WITH_ME: [DriveItem("shared-1", "Cabin Acts from Kestrel")],
+            "drive-1": [DriveItem("team-1", "2026")],
+            "team-1": [DriveItem("team-2", "Cabin Act Sorting")],
+            "mine-1": [],
+            "shared-1": [],
+            "team-2": [],
+        }
+        self.drives = [DriveItem("drive-1", "Scheduling")]
+
+    def places(self):
+        from brainwaves.google.drive import MY_DRIVE, SHARED_WITH_ME, DriveItem
+
+        return [
+            DriveItem(MY_DRIVE, "My Drive"),
+            DriveItem(SHARED_WITH_ME, "Shared with me"),
+            *self.drives,
+        ]
+
+    def folders(self, parent):
+        from brainwaves.google.drive import PLACES
+
+        return self.places() if parent == PLACES else self.tree[parent]
+
+
+def test_the_picker_starts_at_every_place_a_folder_could_be(app):
+    dialog = FolderDialog(FakeDriveTree())
+    offered = [dialog.listing.item(row).text() for row in range(dialog.listing.count())]
+    assert offered == ["My Drive", "Shared with me", "Scheduling"]
+
+
+def test_a_folder_inside_a_shared_drive_can_be_chosen(app):
+    dialog = FolderDialog(FakeDriveTree())
+    dialog.listing.setCurrentRow(2)  # Scheduling
+    dialog.open_button.click()
+    dialog.listing.setCurrentRow(0)  # 2026
+    dialog.open_button.click()
+    dialog.listing.setCurrentRow(0)  # Cabin Act Sorting
+    dialog.open_button.click()
+    assert dialog.folder == ("team-2", "Cabin Act Sorting")
+    assert dialog.use.isEnabled()
+    assert "Scheduling" in dialog.breadcrumb.text()
+
+
+def test_a_folder_someone_shared_with_you_can_be_chosen(app):
+    dialog = FolderDialog(FakeDriveTree())
+    dialog.listing.setCurrentRow(1)  # Shared with me
+    dialog.open_button.click()
+    dialog.listing.setCurrentRow(0)
+    dialog.open_button.click()
+    assert dialog.folder == ("shared-1", "Cabin Acts from Kestrel")
+    assert dialog.use.isEnabled()
+
+
+def test_shared_with_me_is_not_itself_a_folder(app):
+    dialog = FolderDialog(FakeDriveTree())
+    dialog.listing.setCurrentRow(1)
+    dialog.open_button.click()
+    assert not dialog.use.isEnabled()  # things appear in it; nothing can be put in it
+
+
+def test_the_list_of_places_is_not_itself_a_folder(app):
+    dialog = FolderDialog(FakeDriveTree())
+    assert not dialog.use.isEnabled()
+
+
+def test_walking_back_up_reaches_the_places_again(app):
+    dialog = FolderDialog(FakeDriveTree())
+    dialog.listing.setCurrentRow(2)
+    dialog.open_button.click()
+    assert dialog.up.isEnabled()
+    dialog.up.click()
+    assert not dialog.up.isEnabled()
+    assert dialog.breadcrumb.text() == "Drive"
+
+
+def test_a_shared_drive_is_a_folder_you_can_choose(app):
+    dialog = FolderDialog(FakeDriveTree())
+    dialog.listing.setCurrentRow(2)
+    dialog.open_button.click()
+    assert dialog.folder == ("drive-1", "Scheduling")
+    assert dialog.use.isEnabled()

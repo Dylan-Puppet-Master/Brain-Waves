@@ -76,6 +76,11 @@ QPushButton#primary:hover {{
     border-color: {ACCENT_DARK};
     color: {SURFACE};
 }}
+QPushButton#primary:disabled {{
+    background: {SUNKEN};
+    border-color: {LINE};
+    color: {FAINT};
+}}
 QPushButton#quiet {{ border-color: transparent; background: transparent; color: {MUTED}; }}
 QPushButton#quiet:hover {{ color: {ACCENT}; }}
 

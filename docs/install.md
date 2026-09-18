@@ -9,8 +9,10 @@
    to mark it runnable first (`chmod +x brainwaves-macos`).
 3. Press **Sign in with Google** and sign in with the account that can open the cabin act
    sheets.
-4. Press **Link to Google Sheets** and walk down your Drive to the folder that holds the
-   `Cabin Act Sorting - S2W1` sheets.
+4. Press **Link to Google Sheets** and walk down to the folder that holds the
+   `Cabin Act Sorting - S2W1` sheets. It opens on everywhere you can look: **My Drive**,
+   **Shared with me**, and each shared drive you are a member of — the camp folder is
+   usually in one of the last two.
 5. Set the session and week in the toolbar. Brain Waves remembers all of this.
 
 That is the whole installation. There is no config file to put anywhere: everything that is

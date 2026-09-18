@@ -46,6 +46,12 @@ written once when the board is laid out and never again — and a card write goe
 value and flag columns beside it. That is also why laying the board out again clears only
 what lies beyond it rather than wiping the tab.
 
+**Drive is not one tree.** My Drive, the folders other people have shared with you, and the
+shared drives a team has are three separate places, and a camp folder is most often in one
+of the last two. So the picker starts from a list of places rather than from My Drive, every
+query asks for items from all drives, and "Shared with me" is offered to look in but not to
+choose, because things appear in it and nothing can be put in it.
+
 **A clash is reported, never prevented.** `conflicts.py` is arithmetic on a `Week` and a
 `StaffLists` and nothing else: no network, no window, no state. The Brain may well look at
 two cabins on the lake and decide it is fine, so the program does not argue — it just makes

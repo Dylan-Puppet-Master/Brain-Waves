@@ -1,7 +1,9 @@
 # The sheets
 
 One Google spreadsheet holds one week, named `Cabin Act Sorting - S2W1`. All of them live
-in one Drive folder, which is what **Link to Google Sheets** picks. A spreadsheet whose name
+in one Drive folder, which is what **Link to Google Sheets** picks. That folder can be
+anywhere you can reach: your own Drive, a shared drive your team has, or a folder somebody
+has shared with you. A camp folder is usually not in anybody's own Drive. A spreadsheet whose name
 does not end in a session and week code is ignored, so notes and old copies can sit in the
 same folder.
 

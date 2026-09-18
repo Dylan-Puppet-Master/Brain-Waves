@@ -33,7 +33,7 @@ Hover a card to see everything, materials and notes included.
 | Control | Does |
 |---|---|
 | Session, Week | Which sheet is open. Changing either opens that week |
-| Link to Google Sheets | Pick the Drive folder the week sheets live in |
+| Link to Google Sheets | Pick the folder the week sheets live in, in My Drive, in a shared drive, or in something shared with you |
 | Cabins | Add, rename or remove cabins. Names starting M, P, O or C fall into Manzi, Pine, Oak and Cedar |
 | Refresh | Read everything again now, rather than waiting for the next poll |
 | Check for updates | Ask GitHub for a newer Brain Waves |
