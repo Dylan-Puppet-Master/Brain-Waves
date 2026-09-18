@@ -100,16 +100,10 @@ class BoardView(QWidget):
             widget.set_selected(identifier == self.selected)
 
     def _fill_header(self, week: Week) -> None:
+        """Headings, as wide in total as the slots below them, so the two scroll together."""
         layout = self.header_body.layout()
         for column in range(week.columns):
             layout.addWidget(self._day_header(week, column))
-        add = QPushButton("+")
-        add.setObjectName("quiet")
-        add.setToolTip("Add another unplaced column")
-        add.setFixedWidth(28)
-        add.clicked.connect(self.overflow_requested)
-        layout.addWidget(add)
-        layout.addStretch(1)
 
     def _day_header(self, week: Week, column: int) -> QWidget:
         """One column heading, exactly as wide as the slots beneath it."""
@@ -138,7 +132,18 @@ class BoardView(QWidget):
         holder.setProperty("weekend", True)
         name = QLabel(f"Unplaced {column - DAY_COLUMNS + 1}")
         name.setObjectName("unplacedName")
-        box.addWidget(name)
+        row = QHBoxLayout()
+        row.setContentsMargins(0, 0, 0, 0)
+        row.addWidget(name)
+        row.addStretch(1)
+        if column == week.columns - 1:
+            add = QPushButton("+")
+            add.setObjectName("addColumn")
+            add.setToolTip("Add another unplaced column")
+            add.setFixedSize(22, 22)
+            add.clicked.connect(self.overflow_requested)
+            row.addWidget(add)
+        box.addLayout(row)
         box.addStretch(1)
         return outer
 

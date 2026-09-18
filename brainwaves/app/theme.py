@@ -125,6 +125,15 @@ QLineEdit#daySubtitle {{
 }}
 QLineEdit#daySubtitle:hover {{ background: {ACCENT_SOFT}; border-radius: 4px; }}
 QLabel#unplacedName {{ color: {MUTED}; font-size: 13px; font-weight: 700; }}
+QPushButton#addColumn {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 6px;
+    color: {MUTED};
+    font-weight: 700;
+    padding: 0;
+}}
+QPushButton#addColumn:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
 
 QFrame#cabinTile {{ border-radius: 8px; }}
 QLabel#cabinName {{ font-size: 14px; font-weight: 700; }}
