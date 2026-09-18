@@ -5,14 +5,24 @@ against. So a change lands in `self.week` at once and its write is queued; `flus
 the queue, in order, from a background thread. Writes are one card block at a time, so two
 villages editing different cards never overwrite each other.
 
-Reading works the other way round. `poll` asks Drive for the file's revision, which is a
-tiny answer, and reads the board only when that revision has moved. Asking every couple of
-seconds therefore costs almost nothing, and someone else's edit appears about as fast as
-they made it.
+Reading is done by simply reading. `poll` fetches the Board tab and compares it to what is
+held; a full board is about sixty kilobytes, which is affordable every few seconds and is
+the only thing that is reliable.
+
+Google Sheets does not update its Drive file metadata promptly when someone edits a cell in
+the browser, so `modifiedTime` and `version` cannot be used to decide whether to read. An
+earlier version of this file did exactly that, and edits made in Google Sheets went
+unnoticed for minutes or were missed altogether.
+
+The week is read on a background thread and changed on the window's thread, so the two are
+kept apart by `_lock`. It is held only long enough to swap one immutable `Week` for
+another, never across a network call, and a read that finishes to find unwritten changes
+waiting is thrown away rather than allowed to undo them.
 """
 
 from collections.abc import Callable
 from dataclasses import replace
+from threading import Lock
 
 from brainwaves import comments as binding
 from brainwaves.model import DAY_COLUMNS, CabinAct, Comment, Week
@@ -34,7 +44,7 @@ class BoardStore:
         self.comments: list[Comment] = []
         self.staff_names: tuple[str, ...] = ()
         self.pending: list[Callable[[], None]] = []
-        self.revision = ""
+        self._lock = Lock()
 
     @property
     def workbook(self):
@@ -59,57 +69,69 @@ class BoardStore:
         return bool(self.pending)
 
     def flush(self) -> None:
-        """Send every queued change, oldest first. Runs off the UI thread.
-
-        Our own writes move the revision, so the revision is taken again afterwards to
-        stop the next poll reading the board back for no reason. That is only safe if
-        nobody else wrote while we were editing, so the revision is checked first too;
-        where somebody did, the revision is left stale and the next poll reads properly.
-        """
-        if not self.pending:
-            return
-        ours_alone = self._revision() == self.revision
-        while self.pending:
-            self.pending.pop(0)()
-        self.revision = self._revision() if ours_alone else ""
+        """Send every queued change, oldest first. Runs off the UI thread."""
+        while True:
+            with self._lock:
+                if not self.pending:
+                    return
+                job = self.pending.pop(0)
+            job()
 
     def poll(self) -> bool:
-        """Read the board, but only if Drive says the sheet has moved since we last read it.
+        """Read the board. True if anything on it changed.
 
-        The revision call is the whole point: it is small enough to make every second or
-        two, where reading the board is not.
+        Only the Board tab: it is the one people move cards on, and the one that has to be
+        current within a few seconds. A card dragged while this was reading leaves a write
+        waiting, and then what was read is already out of date, so it is dropped and the
+        next poll reads again.
         """
-        revision = self._revision()
-        if revision and revision == self.revision:
-            return False
-        return self.reload()
+        fresh = self.workspace.read_board(self.sheet)
+        with self._lock:
+            if self.pending:
+                return False
+            changed = _contents(fresh.week) != _contents(self.week)
+            self.sheet, self.week = fresh, fresh.week
+        self._adopt_new_cards()
+        return changed
 
     def reload(self) -> bool:
-        """Read the sheet and the comments again. True if anything on the board changed."""
-        revision = self._revision()
+        """Read every tab and the comments again. True if anything on the board changed."""
         fresh = self.workspace.read(self.workbook, self.week.id)
-        changed = _contents(fresh.week) != _contents(self.week)
-        self.sheet, self.week, self.locations = fresh, fresh.week, fresh.locations
-        self.revision = revision
+        with self._lock:
+            changed = _contents(fresh.week) != _contents(self.week)
+            self.sheet, self.week, self.locations = fresh, fresh.week, fresh.locations
         self._adopt_new_cards()
         self.reload_comments()
         return changed
 
-    def _revision(self) -> str:
-        """Drive's revision of the week sheet, or "" if Drive would not say."""
-        try:
-            return self.workspace.drive.revision(self.file_id)
-        except Exception:  # noqa: BLE001 - an unanswered question means read anyway
-            return ""
+    def reload_reference(self) -> bool:
+        """Read the cabins, the locations and the comments. True if the cabins changed.
+
+        These change once a session, where the board changes all afternoon, so they are
+        read on their own slower beat.
+        """
+        fresh = self.workspace.read(self.workbook, self.week.id)
+        with self._lock:
+            changed = fresh.week.cabins != self.week.cabins
+            self.locations = fresh.locations
+            if changed and not self.pending:
+                self.sheet, self.week = fresh, fresh.week
+            else:
+                changed = False
+        if changed:
+            self._adopt_new_cards()
+        self.reload_comments()
+        return changed
 
     def _adopt_new_cards(self) -> None:
         """Give an id to every card typed straight onto the sheet, and write it back."""
-        nameless = [slot for slot, card in self.week.cards.items() if not card.id]
-        for cabin, column in nameless:
-            card = self.week.card(cabin, column)
-            self.week = self.week.place(cabin, column, replace(card, id=new_card_id()))
-        if nameless:
-            self._queue(lambda slots=nameless: self._write_cards(slots))
+        with self._lock:
+            nameless = [slot for slot, card in self.week.cards.items() if not card.id]
+            for cabin, column in nameless:
+                card = self.week.card(cabin, column)
+                self.week = self.week.place(cabin, column, replace(card, id=new_card_id()))
+            if nameless:
+                self._queue(lambda slots=nameless: self._write_cards(slots))
 
     def reload_comments(self) -> None:
         """Read the Drive threads and match them to cards."""
@@ -121,23 +143,26 @@ class BoardStore:
 
     def save_card(self, cabin: str, column: int, card: CabinAct | None) -> None:
         """Put a card in a slot, or clear the slot, and write that block."""
-        self.week = self.week.place(cabin, column, card)
-        self._queue(lambda: self._write_cards([(cabin, column)]))
+        with self._lock:
+            self.week = self.week.place(cabin, column, card)
+            self._queue(lambda: self._write_cards([(cabin, column)]))
 
     def swap(self, cabin: str, one: int, other: int) -> None:
         """Exchange two cards in the same cabin row."""
         if one == other:
             return
-        self.week = self.week.swap(cabin, one, other)
-        self._queue(lambda: self._write_cards([(cabin, one), (cabin, other)]))
+        with self._lock:
+            self.week = self.week.swap(cabin, one, other)
+            self._queue(lambda: self._write_cards([(cabin, one), (cabin, other)]))
 
     def set_subtitle(self, column: int, text: str) -> None:
         """Name what else is happening on a weekday."""
         if not 0 <= column < DAY_COLUMNS:
             return
-        days = list(self.week.days)
-        days[column] = replace(days[column], subtitle=text.strip())
-        self.week = replace(self.week, days=tuple(days))
+        with self._lock:
+            days = list(self.week.days)
+            days[column] = replace(days[column], subtitle=text.strip())
+            self.week = replace(self.week, days=tuple(days))
         self._queue(
             lambda: self.workbook.write(
                 week_sheet.BOARD_TAB, [[text.strip()]], week_sheet.subtitle_cell(column)
@@ -146,13 +171,15 @@ class BoardStore:
 
     def set_cabins(self, cabins) -> None:
         """Replace the roster, rewriting the board so every cabin has a row."""
-        self.week = replace(self.week, cabins=tuple(cabins))
-        self._queue(self._write_roster)
+        with self._lock:
+            self.week = replace(self.week, cabins=tuple(cabins))
+            self._queue(self._write_roster)
 
     def add_overflow_column(self) -> None:
         """Widen the unplaced zone by one column."""
-        self.week = replace(self.week, overflow_columns=self.week.overflow_columns + 1)
-        self._queue(self._rewrite_board)
+        with self._lock:
+            self.week = replace(self.week, overflow_columns=self.week.overflow_columns + 1)
+            self._queue(self._rewrite_board)
 
     def add_comment(self, card_id: str, text: str) -> None:
         """Start a thread about a card, anchored to it where Drive allows."""

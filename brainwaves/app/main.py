@@ -78,7 +78,7 @@ class MainWindow(QMainWindow):
         self.jobs.progress.connect(self._job_progress)
         self.jobs.idle.connect(self._settle)
         self.jobs.start()
-        self.working = 0
+        self.running: set[str] = set()
 
         self.board = BoardView()
         self.board.card_picked.connect(self.select_card)
@@ -385,9 +385,13 @@ class MainWindow(QMainWindow):
         )
 
     def _submit(self, name: str, work, message: str = "") -> None:
-        """Send a job, and say so unless it is one of the quiet ones."""
+        """Send a job, and say so unless it is one of the quiet ones.
+
+        A job already in flight under the same name is not sent twice, so a slow read
+        cannot pile polls up behind it.
+        """
+        self.running.add(name)
         if name not in QUIET_JOBS:
-            self.working += 1
             self.activity.show()
             if message:
                 self._set_busy(message)
@@ -395,7 +399,7 @@ class MainWindow(QMainWindow):
 
     def _settle(self) -> None:
         """The queue has emptied: take the bar down."""
-        self.working = 0
+        self.running.clear()
         self.activity.hide()
 
     def _job_progress(self, message: str) -> None:
@@ -408,16 +412,16 @@ class MainWindow(QMainWindow):
         self._submit("flush", self.store.flush, message)
 
     def _poll(self) -> None:
-        """Ask Google whether the sheet has moved, and read it if it has."""
-        if self.store is None or self.store.busy or self.jobs.waiting:
+        """Read the board again. Every time: see `brainwaves.store` for why."""
+        if self.store is None or "sync" in self.running:
             return
         self._submit("sync", self.store.poll)
 
     def _poll_comments(self) -> None:
-        """Read the comment threads. Drive does not report those as changes to the file."""
-        if self.store is None or self.store.busy or self.jobs.waiting:
+        """Read the comments, the cabins and the locations, on their own slower beat."""
+        if self.store is None or "comments" in self.running:
             return
-        self._submit("comments", self.store.reload_comments)
+        self._submit("comments", self.store.reload_reference)
 
     def refresh(self) -> None:
         """Read everything again now, whatever the revision says."""
@@ -473,6 +477,7 @@ class MainWindow(QMainWindow):
         return week_summary(self.store.week)
 
     def _job_done(self, name: str, result) -> None:
+        self.running.discard(name)
         if name == "signin":
             self._signed_in(result)
         elif name == "open":
@@ -531,6 +536,7 @@ class MainWindow(QMainWindow):
         self._install_update(release)
 
     def _job_failed(self, name: str, message: str) -> None:
+        self.running.discard(name)
         self.activity.hide()
         if name == "update-quiet":
             return  # a failed startup check is not worth interrupting anyone for

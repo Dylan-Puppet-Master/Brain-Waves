@@ -274,18 +274,27 @@ def test_a_failed_poll_is_reported_in_the_status_line_not_a_dialog(window):
     assert window.status.objectName() == "statusError"
 
 
-def test_the_poll_holds_off_while_changes_are_still_being_written(window, store):
-    window.swap_cards("M1", 0, 3)
+def test_a_second_poll_is_not_queued_behind_one_still_running(window, store):
+    window._poll()
     waiting = window.jobs.waiting
+    window._poll()
     window._poll()
     assert window.jobs.waiting == waiting
 
 
-def test_the_comment_poll_holds_off_while_changes_are_being_written(window, store):
-    window.swap_cards("M1", 0, 3)
+def test_a_second_comment_poll_is_not_queued_behind_one_still_running(window, store):
+    window._poll_comments()
     waiting = window.jobs.waiting
     window._poll_comments()
     assert window.jobs.waiting == waiting
+
+
+def test_a_poll_is_queued_again_once_the_last_one_has_finished(window, store):
+    window._poll()
+    window._job_done("sync", False)
+    waiting = window.jobs.waiting
+    window._poll()
+    assert window.jobs.waiting == waiting + 1
 
 
 def test_a_flow_layout_gives_no_room_to_a_hidden_widget(app):

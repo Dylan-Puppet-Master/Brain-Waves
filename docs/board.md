@@ -66,15 +66,22 @@ survive being closed and reopened.
 
 ## Working at the same time as other people
 
-Someone else's change appears within a second or two. Brain Waves asks Google twice a
-second whether the sheet has moved, which is a very small question, and only reads the
-board when the answer is yes. Comment threads are looked for every ten seconds, because
-Google does not count a new comment as a change to the sheet.
+Everyone sees everyone else's work within a few seconds, whether it was done in Brain Waves
+or typed straight into Google Sheets. The board is read again every three seconds and
+redrawn when it has changed; the cabins, the locations and the comments are read every ten,
+because they change once a session rather than all afternoon.
 
-Two village leaders can therefore fill in their own cabins at the same time. Each change is
-written as its own small block of cells, which is why one person's edit does not overwrite
-another's.
+Both rates can be changed; see [Install and set up](install.md).
 
-Both rates can be changed; see [Install and set up](install.md). If the network drops, the
-line at the top right says so and Brain Waves keeps trying. **Refresh** reads everything
-immediately whatever the rates are.
+Each change is written as its own small block of cells, so one person's edit never
+overwrites another's, and a card you have just moved is never undone by a read that was
+already in flight. If the network drops, the line at the top right says so and Brain Waves
+keeps trying.
+
+!!! note
+    Brain Waves reads the board rather than asking Google whether it changed. Google Sheets
+    does not update a file's Drive timestamp promptly when a cell is edited in the browser,
+    so asking is unreliable — an earlier version did ask, and edits made in Google Sheets
+    went unnoticed for minutes or were missed altogether. Reading a full board costs about
+    sixty kilobytes, which is affordable every few seconds and is the only thing that
+    always works.

@@ -79,14 +79,22 @@ class FakeWorkbook(CsvWorkbook):
 
 
 class FakeDrive:
-    """Stands in for Drive's revision, which really does change when the file does."""
+    """Stands in for Drive.
+
+    `frozen` is the point of it: Google Sheets does not update a file's Drive metadata
+    promptly when a cell is edited in the browser, so nothing in Brain Waves may depend on
+    that metadata to decide whether to read.
+    """
 
     def __init__(self, root):
         self.root = Path(root)
+        self.frozen = False
         self.asked = 0
 
     def revision(self, file_id):
         self.asked += 1
+        if self.frozen:
+            return "unchanged"
         blob = b"".join(sorted(path.read_bytes() for path in self.root.glob("*.csv")))
         return hashlib.sha1(blob).hexdigest()
 
@@ -103,12 +111,16 @@ class FakeWorkspace:
     def read(self, workbook, week_id):
         tabs = [week_sheet.BOARD_TAB, week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB]
         tables = workbook.read_many(tabs)
-        week = week_sheet.parse_week(
-            week_id, tables[week_sheet.BOARD_TAB], tables[week_sheet.ROSTER_TAB]
-        )
+        cabins = week_sheet.parse_roster(tables[week_sheet.ROSTER_TAB])
+        week = week_sheet.parse_week(week_id, tables[week_sheet.BOARD_TAB], cabins)
         return WeekSheet(
             workbook, week, week_sheet.parse_locations(tables[week_sheet.LOCATIONS_TAB])
         )
+
+    def read_board(self, sheet, cabins=None):
+        board = sheet.workbook.read(week_sheet.BOARD_TAB)
+        week = week_sheet.parse_week(sheet.week.id, board, cabins or sheet.week.cabins)
+        return WeekSheet(sheet.workbook, week, sheet.locations)
 
     def staff_names(self):
         return self.names

@@ -59,18 +59,33 @@ class Workspace:
     def read(self, workbook: SheetsWorkbook, week_id: WeekId) -> WeekSheet:
         """Read the Board, Roster and Locations tabs of an open workbook."""
         tabs = [week_sheet.BOARD_TAB, week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB]
+        self._check(workbook, tabs)
+        tables = workbook.read_many(tabs)
+        cabins = week_sheet.parse_roster(tables[week_sheet.ROSTER_TAB])
+        week = week_sheet.parse_week(week_id, tables[week_sheet.BOARD_TAB], cabins)
+        locations = week_sheet.parse_locations(tables[week_sheet.LOCATIONS_TAB])
+        return WeekSheet(workbook, week, locations or DEFAULT_LOCATIONS)
+
+    def read_board(self, sheet: WeekSheet, cabins=None) -> WeekSheet:
+        """Read only the Board tab, keeping the cabins and locations already in hand.
+
+        This is what a poll does. The board is the tab people are moving cards around on;
+        the roster and the locations change once a session, so re-reading them every few
+        seconds would be most of the traffic for none of the news.
+        """
+        self._check(sheet.workbook, [week_sheet.BOARD_TAB])
+        board = sheet.workbook.read(week_sheet.BOARD_TAB)
+        week = week_sheet.parse_week(sheet.week.id, board, cabins or sheet.week.cabins)
+        return WeekSheet(sheet.workbook, week, sheet.locations)
+
+    @staticmethod
+    def _check(workbook: SheetsWorkbook, tabs) -> None:
         missing = [tab for tab in tabs if tab not in workbook.tabs()]
         if missing:
             raise LoadError(
                 f"{workbook.title} is missing the {', '.join(missing)} tab. Make the week "
                 "again with Start New Week, or add the tab by hand."
             )
-        tables = workbook.read_many(tabs)
-        week = week_sheet.parse_week(
-            week_id, tables[week_sheet.BOARD_TAB], tables[week_sheet.ROSTER_TAB]
-        )
-        locations = week_sheet.parse_locations(tables[week_sheet.LOCATIONS_TAB])
-        return WeekSheet(workbook, week, locations or DEFAULT_LOCATIONS)
 
     def create_week(self, folder_id: str, week_id: WeekId, seed: WeekSheet | None) -> WeekSheet:
         """Make a week sheet from the template. Raises WeekExists rather than overwrite."""

@@ -56,17 +56,24 @@ appends the write to `pending`; `flush` sends the queue in order from a backgrou
 The board moves at the speed of the mouse, and the writes still arrive in the order they
 were made.
 
-**Reading often is made cheap rather than done less.** Asking Drive for a file's revision
-costs a couple of hundred bytes; reading a board costs several hundred kilobytes. `poll`
-asks the cheap question every couple of seconds and reads only when the answer has changed,
-so other people's edits show up about as fast as they make them and the network stays quiet
-in between. A write of our own moves the revision too, so `flush` takes the revision
-afterwards, but only when nobody else wrote while we were editing; where somebody did, the
-revision is left stale and the next poll reads the board properly.
+**The board is read, not asked about.** Drive can say when a file last changed, and that
+answer is a couple of hundred bytes against the sixty kilobytes of reading a board. Brain
+Waves used to use it, and it was wrong to: Google Sheets does not update a file's Drive
+metadata promptly when someone edits a cell in the browser, so the check almost never
+fired for the edits that mattered most. Worse, taking a fresh revision after writing could
+adopt a revision that already contained somebody's unread edit, marking it seen and losing
+it for good. Sixty kilobytes every three seconds is cheap enough; a change signal that
+sometimes never arrives is not cheap at all.
 
-Google can push notifications instead of being asked, which would be better still, but only
-to a public HTTPS endpoint on a verified domain. That means running a server, and a server
-is the thing this program is meant not to need.
+What is still worth splitting is *what* gets read. The board is read every few seconds; the
+roster, the locations and the comments every ten, because they change once a session.
+
+**A read never undoes an unwritten change.** The week is read on the worker thread and
+changed on the window's, so a card dragged while a read was in flight could be overwritten
+by the older board that read came back with. The store keeps one lock, held only long
+enough to swap one immutable `Week` for another and never across a network call, and a read
+that finishes to find writes still queued is thrown away — what is on screen is newer than
+what was read, so the next poll reads again.
 
 **A timer never raises a dialog.** A failed poll writes one line in the status bar and is
 tried again; only something a person asked for — opening a week, creating one, saving —

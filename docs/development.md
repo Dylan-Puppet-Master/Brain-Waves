@@ -20,7 +20,12 @@ docs/                                this site
 
 Reading a week is `workspace.Workspace.read` → `sheets.week.parse_week`; writing one is
 `sheets.week.card_block` → `sheets.source.SheetsWorkbook.write`. Each stage takes and
-returns the dataclasses in `model.py`; nothing holds global state.
+returns the dataclasses in `model.py`; nothing holds global state except `BoardStore`,
+which holds the one week that is open and the one lock that keeps its two threads apart.
+
+A poll calls `Workspace.read_board`, which reads the Board tab alone and keeps the cabins
+and locations already in hand. `Workspace.read` reads everything and is what opening a week
+and pressing Refresh do.
 
 ## Running the tests
 

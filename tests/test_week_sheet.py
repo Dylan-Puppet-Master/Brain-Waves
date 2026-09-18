@@ -17,7 +17,7 @@ from brainwaves.sheets.week import (
 
 
 def test_render_then_parse_gives_the_same_week(week):
-    parsed = parse_week(week.id, render_week(week), render_roster(week.cabins))
+    parsed = parse_week(week.id, render_week(week), week.cabins)
     assert parsed == week
 
 
@@ -52,7 +52,7 @@ def test_a_card_with_no_id_on_the_sheet_reads_as_having_none(week):
     index = [c.name for c in week.cabins].index("M1")
     row, left = layout.card_origin(index, 0)
     grid[row][left + layout.ID_OFFSET] = ""
-    parsed = parse_week(week.id, grid, render_roster(week.cabins))
+    parsed = parse_week(week.id, grid, week.cabins)
     assert parsed.card("M1", 0).id == ""
 
 
@@ -62,13 +62,13 @@ def test_subtitles_survive_the_round_trip(week):
     days = list(week.days)
     days[3] = replace(days[3], subtitle="Pizza Day")
     week = replace(week, days=tuple(days))
-    parsed = parse_week(week.id, render_week(week), render_roster(week.cabins))
+    parsed = parse_week(week.id, render_week(week), week.cabins)
     assert parsed.days[3].subtitle == "Pizza Day"
 
 
 def test_a_ragged_sheet_still_parses(week):
     grid = [row[: len(row) - 3] for row in render_week(week)]
-    parsed = parse_week(week.id, grid, render_roster(week.cabins))
+    parsed = parse_week(week.id, grid, week.cabins)
     assert parsed.card("M1", 0).title == "Becoming a team"
 
 
@@ -79,7 +79,7 @@ def test_roster_is_sorted_into_village_order():
 
 def test_an_empty_roster_is_an_error(week):
     with pytest.raises(LoadError):
-        parse_week(week.id, render_week(week), [["Cabin", "Counselor", "Co-Counselor"]])
+        parse_week(week.id, render_week(week), ())
 
 
 def test_locations_round_trip():
@@ -100,7 +100,7 @@ def test_a_wider_sheet_keeps_its_extra_overflow_columns(week):
     from dataclasses import replace
 
     wide = replace(week, overflow_columns=6)
-    parsed = parse_week(wide.id, render_week(wide), render_roster(wide.cabins))
+    parsed = parse_week(wide.id, render_week(wide), wide.cabins)
     assert parsed.overflow_columns == 6
 
 
@@ -109,7 +109,7 @@ def test_checkboxes_written_by_hand_are_understood(week):
     index = [c.name for c in week.cabins].index("M1")
     row, left = layout.card_origin(index, 0)
     grid[row + layout.NOTES][left + layout.FLAG_VALUE_OFFSET] = "yes"
-    parsed = parse_week(week.id, grid, render_roster(week.cabins))
+    parsed = parse_week(week.id, grid, week.cabins)
     assert parsed.card("M1", 0).food
 
 

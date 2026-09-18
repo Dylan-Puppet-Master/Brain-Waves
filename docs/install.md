@@ -49,8 +49,8 @@ client_secret = "……"
 skills = "1Woqx_vthAAbGh-CSGFwgMDooqhkt0PWV1XKLiNqiJvU"  # the Skills spreadsheet id
 
 [sync]
-poll_seconds         = 2    # how often to ask whether the sheet has changed
-comment_poll_seconds = 10   # how often to look for new comments
+poll_seconds         = 3    # how often to read the board
+comment_poll_seconds = 10   # how often to read comments, cabins and locations
 
 [updates]
 releases_url = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"

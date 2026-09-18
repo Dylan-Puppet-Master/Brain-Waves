@@ -96,36 +96,30 @@ def test_replying_and_resolving(tmp_path, week):
     assert store.comments[0].resolved
 
 
-def test_a_poll_reads_nothing_when_the_sheet_has_not_moved(tmp_path, week):
+def test_a_poll_reports_no_change_when_there_is_none(tmp_path, week):
     store = store_for(tmp_path, week)
-    store.reload()
-    before = store.workspace.drive.asked
     assert store.poll() is False
-    assert store.workspace.drive.asked == before + 1  # only the cheap question was asked
+    assert store.poll() is False
 
 
-def test_a_poll_reads_the_board_once_the_sheet_has_moved(tmp_path, week):
+def test_a_poll_sees_an_edit_google_drive_would_not_have_reported(tmp_path, week):
+    """The regression this replaced: Sheets does not bump its Drive metadata promptly.
+
+    The fake Drive here never changes its revision, standing in for that. A poll must
+    still notice the edit, which it only does by reading the board every time.
+    """
     store = store_for(tmp_path, week)
-    store.reload()
+    store.workspace.drive.frozen = True
     other = BoardStore(store.workspace, store.sheet)
     other.save_card("C1", 2, CabinAct(id="eee555", title="Blacksmithing"))
     other.flush()
     assert store.poll() is True
     assert store.week.card("C1", 2).title == "Blacksmithing"
-    assert store.poll() is False
 
 
-def test_our_own_write_does_not_make_the_next_poll_read_the_board(tmp_path, week):
+def test_an_edit_made_while_we_were_editing_is_still_seen(tmp_path, week):
+    """The other half of the regression: our own write must not mask someone else's."""
     store = store_for(tmp_path, week)
-    store.reload()
-    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
-    store.flush()
-    assert store.poll() is False
-
-
-def test_a_write_racing_someone_else_leaves_the_next_poll_to_read(tmp_path, week):
-    store = store_for(tmp_path, week)
-    store.reload()
     other = BoardStore(store.workspace, store.sheet)
     other.save_card("C1", 2, CabinAct(id="eee555", title="Blacksmithing"))
     other.flush()
@@ -136,15 +130,33 @@ def test_a_write_racing_someone_else_leaves_the_next_poll_to_read(tmp_path, week
     assert store.week.card("O1", 1).title == "Canoe"
 
 
-def test_a_poll_reads_the_board_when_drive_will_not_say(tmp_path, week):
+def test_our_own_write_is_not_reported_as_a_change(tmp_path, week):
     store = store_for(tmp_path, week)
-    store.reload()
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.flush()
+    assert store.poll() is False
 
-    def sulk(file_id):
-        raise OSError("no network")
 
-    store.workspace.drive.revision = sulk
-    assert store.poll() is False  # nothing changed, but the board was read to find out
+def test_a_poll_reads_the_board_and_leaves_the_other_tabs_alone(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
+    assert store.poll() is False
+    assert "C9" not in [c.name for c in store.week.cabins]
+
+
+def test_reading_the_reference_tabs_picks_up_a_new_cabin(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
+    assert store.reload_reference() is True
+    assert "C9" in [c.name for c in store.week.cabins]
+
+
+def test_reading_the_reference_tabs_keeps_the_board_it_already_has(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.workbook.write(week_sheet.LOCATIONS_TAB, [["Secret Pool"]], "A99")
+    assert store.reload_reference() is False
+    assert "Secret Pool" in store.locations
+    assert store.week.card("M1", 0).title == "Becoming a team"
 
 
 def test_a_change_made_elsewhere_is_noticed(tmp_path, week):
@@ -193,3 +205,34 @@ def test_staff_names_come_from_the_skills_doc(tmp_path, week):
 
 def test_the_summary_counts_placed_and_unplaced(week):
     assert week_summary(week) == "2 of 25 days filled - 1 unplaced"
+
+
+def test_a_poll_that_lands_on_an_unwritten_change_does_not_undo_it(tmp_path, week):
+    """A card dragged while a poll was reading must survive the poll finishing."""
+    store = store_for(tmp_path, week)
+    read_board = store.workspace.read_board
+
+    def read_then_drag(sheet, cabins=None):
+        fresh = read_board(sheet, cabins)
+        store.swap("M1", 0, 3)  # as if the user dragged a card mid-read
+        return fresh
+
+    store.workspace.read_board = read_then_drag
+    assert store.poll() is False
+    assert store.week.card("M1", 3).id == "aaa111"  # the drag stands
+    store.workspace.read_board = read_board
+    store.flush()
+    store.poll()
+    assert store.week.card("M1", 3).id == "aaa111"
+
+
+def test_the_reference_read_also_leaves_an_unwritten_change_alone(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    assert store.reload_reference() is False
+    assert store.week.card("O1", 1).title == "Canoe"
+    store.flush()
+    assert store.reload_reference() is True
+    assert "C9" in [c.name for c in store.week.cabins]
+    assert store.week.card("O1", 1).title == "Canoe"

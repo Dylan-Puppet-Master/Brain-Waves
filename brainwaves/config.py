@@ -16,7 +16,7 @@ from platformdirs import user_config_path, user_data_path
 APP_NAME = "brainwaves"
 
 DEFAULT_SKILLS_TAB = "Skills"
-DEFAULT_POLL_SECONDS = 2
+DEFAULT_POLL_SECONDS = 3
 DEFAULT_COMMENT_POLL_SECONDS = 10
 DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
 
@@ -25,9 +25,9 @@ DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/release
 class Config:
     """What Brain Waves needs to reach Google and the Skills doc.
 
-    `poll_seconds` is how often to ask Google whether the sheet has changed, which is a
-    small question; the board is only read when the answer is yes. `comment_poll_seconds`
-    is the same for comment threads, which Drive does not report as changes to the file.
+    `poll_seconds` is how often to read the board, which is the tab people move cards on.
+    `comment_poll_seconds` is how often to read the comments, the cabins and the locations,
+    which change far less often.
     """
 
     client_id: str = ""

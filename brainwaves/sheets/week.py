@@ -29,9 +29,12 @@ REQUESTS_TAB = "Support Requests"
 ROSTER_HEADER = ["Cabin", "Counselor", "Co-Counselor"]
 
 
-def parse_week(week_id: WeekId, board: Table, roster: Table) -> Week:
-    """Build a Week from the Board and Roster tabs."""
-    cabins = parse_roster(roster)
+def parse_week(week_id: WeekId, board: Table, cabins) -> Week:
+    """Build a Week from the Board tab and a roster that has already been read.
+
+    The cabins are passed in rather than parsed here, because the Board tab is read every
+    few seconds and the Roster tab hardly ever changes.
+    """
     if not cabins:
         raise LoadError(f"{ROSTER_TAB}: no cabins; add one row per cabin under {ROSTER_HEADER}")
     columns = _columns(board)
