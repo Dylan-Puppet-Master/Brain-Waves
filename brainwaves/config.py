@@ -1,12 +1,20 @@
-"""Settings the user writes once, and state the app remembers for them.
+"""Where Brain Waves gets its settings, and what it remembers for you.
 
-Settings live in `config.toml` and name the Google OAuth client and the Skills doc. State
-lives in `state.json` next to the cached token: which Drive folder holds the week sheets,
-and which session and week were open last.
+Settings come from three places, each overriding the one before:
+
+1. `brainwaves.built_in`, which the release build fills in with camp's Google client and
+   Skills doc. A village leader who downloads Brain Waves therefore has to set up nothing.
+2. `brainwaves.toml` beside the program, for changing something on one machine without a
+   new release.
+3. `config.toml` in the usual per-user config folder, which is what a source checkout uses.
+
+State — the Drive folder, the session and the week — lives in `state.json` beside the saved
+sign-in, and is the only part of this that differs from one person to the next.
 """
 
 import json
 import os
+import sys
 import tomllib
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
@@ -54,12 +62,28 @@ class State:
     week: int = 1
 
 
-def config_path() -> Path:
-    """Where `config.toml` is read from. `BRAINWAVES_CONFIG` overrides it."""
+def program_folder() -> Path:
+    """The folder Brain Waves is running from: beside the downloaded file, or the checkout."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent.parent
+
+
+def config_paths() -> list[Path]:
+    """Every file that may hold settings, in the order they override one another."""
     override = os.environ.get("BRAINWAVES_CONFIG")
     if override:
-        return Path(override).expanduser()
-    return user_config_path(APP_NAME) / "config.toml"
+        return [Path(override).expanduser()]
+    return [
+        program_folder() / f"{APP_NAME}.toml",
+        user_config_path(APP_NAME) / "config.toml",
+    ]
+
+
+def config_path() -> Path:
+    """The settings file in use, or where one would be looked for if none exists."""
+    found = [path for path in config_paths() if path.exists()]
+    return found[-1] if found else config_paths()[-1]
 
 
 def data_path(name: str) -> Path:
@@ -71,11 +95,11 @@ def data_path(name: str) -> Path:
 
 
 def load_config(path: Path | None = None) -> Config:
-    """Read the config file. A missing file yields defaults, which the app explains."""
-    path = path or config_path()
-    if not path.exists():
-        return Config()
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    """Read the settings, starting from what was built in and letting files override it."""
+    data = _built_in()
+    for candidate in [path] if path else config_paths():
+        if candidate and candidate.exists():
+            _merge(data, tomllib.loads(candidate.read_text(encoding="utf-8")))
     google = data.get("google", {})
     sheets = data.get("sheets", {})
     sync = data.get("sync", {})
@@ -88,6 +112,26 @@ def load_config(path: Path | None = None) -> Config:
         comment_poll_seconds=int(sync.get("comment_poll_seconds", DEFAULT_COMMENT_POLL_SECONDS)),
         releases_url=data.get("updates", {}).get("releases_url", DEFAULT_RELEASES),
     )
+
+
+def _built_in() -> dict:
+    """What the release build put in, shaped like the config file."""
+    from brainwaves.built_in import SETTINGS
+
+    return {
+        "google": {
+            "client_id": SETTINGS.get("client_id", ""),
+            "client_secret": SETTINGS.get("client_secret", ""),
+        },
+        "sheets": {"skills": SETTINGS.get("skills_sheet", "")},
+    }
+
+
+def _merge(into: dict, extra: dict) -> None:
+    """Overlay one config's sections onto another, a setting at a time."""
+    for section, values in extra.items():
+        if isinstance(values, dict):
+            into.setdefault(section, {}).update(values)
 
 
 def load_state() -> State:

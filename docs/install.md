@@ -13,40 +13,56 @@
    `Cabin Act Sorting - S2W1` sheets.
 5. Set the session and week in the toolbar. Brain Waves remembers all of this.
 
+That is the whole installation. There is no config file to put anywhere: everything that is
+the same for everyone at camp — the Google client, the Skills doc — is built into the file
+you downloaded, and the only things that differ from one person to the next are your
+sign-in, your folder and your week, which Brain Waves remembers for you.
+
 **Check for updates** in the top right asks GitHub whether a newer version is out, and
 replaces the file you are running if you say yes. Restart it afterwards.
 
 ## For whoever sets camp up, once
 
 Brain Waves acts as the person using it, so that a comment they write is theirs and a sheet
-they cannot open stays closed. That needs a Google OAuth client, which is made once and
-shared with the village leaders in their config file.
+they cannot open stays closed. That needs a Google OAuth client, made once and built into
+the releases.
 
 1. In the [Google Cloud console](https://console.cloud.google.com), pick or make a project.
-2. Enable the **Google Sheets API** and the **Google Drive API**.
+2. Enable the **Google Sheets API** and the **Google Drive API**. Nothing works without
+   both.
 3. Under **APIs and services - OAuth consent screen**, set the app up as **Internal** if
    camp has Google Workspace, or **External** with the village leaders added as test users.
    Ask for these scopes: `drive`, `spreadsheets`, `userinfo.email`.
-4. Under **Credentials**, create an **OAuth client ID** of type **Desktop app**. Note the
-   client id and client secret.
-5. Write the config file on each village leader's computer. Brain Waves prints where it
-   looks:
+4. Under **Credentials**, create an **OAuth client ID** of type **Desktop app**.
+5. In the GitHub repository, under **Settings - Secrets and variables - Actions**, add
+   `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `SKILLS_SHEET` (the Skills spreadsheet
+   id). The release workflow builds these into every download.
 
-```
-brainwaves where
-```
+Push a tag (`git tag v0.2.0 && git push --tags`) and the release is built for all three
+platforms with camp's settings inside.
+
+!!! note
+    A Google client secret for a desktop app is not confidential in the usual sense — it
+    ships inside every copy of every desktop program that signs in to Google, and Google
+    says as much. It is kept in a repository secret rather than in the code anyway, because
+    a published one lets someone put camp's name on a consent screen of their own.
+
+## Changing something without a new release
+
+Settings can also come from a file, which overrides what was built in. Brain Waves looks for
+`brainwaves.toml` beside the program — the simplest thing to hand someone — and then for
+`config.toml` in the usual per-user config folder. `brainwaves where` prints which one is
+in use and whether the Google client is set up.
 
 ```toml
-# ~/.config/brainwaves/config.toml on Linux
-# ~/Library/Application Support/brainwaves/config.toml on macOS
-# %LOCALAPPDATA%\brainwaves\config.toml on Windows
+# every one of these is optional; leave out what you are not changing
 
 [google]
 client_id     = "…….apps.googleusercontent.com"
 client_secret = "……"
 
 [sheets]
-skills = "1Woqx_vthAAbGh-CSGFwgMDooqhkt0PWV1XKLiNqiJvU"  # the Skills spreadsheet id
+skills = "1Woqx…"   # the Skills spreadsheet id
 
 [sync]
 poll_seconds         = 3    # how often to read the board
@@ -75,6 +91,6 @@ brainwaves
 | `brainwaves` | Open the window |
 | `brainwaves sign-in` | Sign in to Google without opening the window |
 | `brainwaves sign-out` | Forget the saved sign-in |
-| `brainwaves where` | Print where settings and the saved sign-in live |
+| `brainwaves where` | Print which settings are in use and where the sign-in lives |
 | `brainwaves template --csv folder` | Write the blank week template out as CSV files |
 | `brainwaves template --folder <drive id>` | Create a blank week sheet in a Drive folder |

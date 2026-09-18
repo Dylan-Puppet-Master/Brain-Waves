@@ -5,7 +5,8 @@
 ```
 brainwaves/
   model.py, names.py, palette.py     domain objects, identifiers, the shared colours
-  config.py, defaults.py             config.toml and saved state, what a new week starts with
+  config.py, built_in.py, defaults.py  settings and saved state, what a release is built with,
+                                     what a new week starts with
   sheets/                            layout, parse and render, formatting, Support Requests, staff names
   google/                            auth, Drive, Drive comments, retrying a wobble
   comments.py                        matching Drive threads to cards
@@ -82,8 +83,12 @@ to see it. Add a case to `tests/test_week_sheet.py` and to `tests/test_app.py`.
 git tag v0.2.0 && git push --tags
 ```
 
-`.github/workflows/release.yml` builds the one-file executable on Windows, macOS and Linux
-and attaches all three to a GitHub release. `brainwaves.update` finds the asset whose name
+`.github/workflows/release.yml` runs `tools/build_settings.py` to put camp's Google client
+and Skills doc into `brainwaves/built_in.py` from the repository's secrets, then builds the
+one-file executable on Windows, macOS and Linux and attaches all three to a GitHub release.
+That is what makes the download work with no config file; a source checkout leaves
+`built_in.py` blank and reads a config file as before, and a test checks that camp's real
+credentials never get committed. `brainwaves.update` finds the asset whose name
 mentions the platform it is running on, so the file names matter: they come from
 `brainwaves.spec`.
 

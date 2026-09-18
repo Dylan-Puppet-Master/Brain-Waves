@@ -37,8 +37,10 @@ Google Drive ──┬── comments ──▶ google/comments.py ──▶ com
 ## Install
 
 Village leaders download one file from the
-[releases page](https://github.com/camp-augusta/brainwaves/releases) and open it. From
-source:
+[releases page](https://github.com/camp-augusta/brainwaves/releases) and open it. There is
+nothing else to install and no config file to place: camp's Google client and Skills doc
+are built into the release, and the only per-person settings — the sign-in, the folder and
+the week — are remembered by the program. From source:
 
 ```
 git clone https://github.com/camp-augusta/brainwaves
@@ -57,7 +59,7 @@ Then follow `docs/install.md` to create the Google OAuth client, write
 ```
 brainwaves                                  # open the window
 brainwaves sign-in                          # sign in to Google without the window
-brainwaves where                            # where settings and the saved sign-in live
+brainwaves where                            # which settings are in use, and where the sign-in lives
 brainwaves template --csv /tmp/template     # write the blank week template out as CSV
 brainwaves template --folder <drive id>     # create a blank week sheet in a Drive folder
 ```

@@ -58,3 +58,74 @@ def test_an_unknown_key_in_the_state_file_gives_defaults(tmp_path, monkeypatch):
 def test_with_week_changes_only_the_week():
     state = State("folder-id", "name", 1, 1)
     assert with_week(state, 3, 2) == State("folder-id", "name", 3, 2)
+
+
+def test_a_download_with_settings_built_in_needs_no_config_file(tmp_path, monkeypatch):
+    """A village leader opens one file and signs in. That is the whole installation."""
+    monkeypatch.setattr(
+        "brainwaves.built_in.SETTINGS",
+        {"client_id": "id", "client_secret": "secret", "skills_sheet": "sheet"},
+    )
+    monkeypatch.setenv("BRAINWAVES_CONFIG", str(tmp_path / "absent.toml"))
+    config = load_config()
+    assert config.has_client
+    assert config.skills_sheet == "sheet"
+    assert config.poll_seconds == Config().poll_seconds
+
+
+def test_a_config_file_overrides_what_was_built_in(tmp_path, monkeypatch):
+    monkeypatch.setattr(
+        "brainwaves.built_in.SETTINGS",
+        {"client_id": "built", "client_secret": "secret", "skills_sheet": "built-sheet"},
+    )
+    path = tmp_path / "brainwaves.toml"
+    path.write_text('[sheets]\nskills = "this-one-instead"\n')
+    config = load_config(path)
+    assert config.skills_sheet == "this-one-instead"
+    assert config.client_id == "built"  # what the file did not mention is kept
+
+
+def test_settings_beside_the_program_are_found(tmp_path, monkeypatch):
+    from brainwaves import config as settings
+
+    beside, personal = tmp_path / "beside", tmp_path / "personal"
+    beside.mkdir()
+    personal.mkdir()
+    monkeypatch.delenv("BRAINWAVES_CONFIG", raising=False)
+    monkeypatch.setattr(settings, "program_folder", lambda: beside)
+    monkeypatch.setattr(settings, "user_config_path", lambda _name: personal)
+    (beside / "brainwaves.toml").write_text('[sheets]\nskills = "beside-the-program"\n')
+    assert settings.load_config().skills_sheet == "beside-the-program"
+    assert settings.config_path() == beside / "brainwaves.toml"
+
+
+def test_a_personal_config_file_wins_over_one_beside_the_program(tmp_path, monkeypatch):
+    from brainwaves import config as settings
+
+    beside, personal = tmp_path / "beside", tmp_path / "personal"
+    beside.mkdir()
+    personal.mkdir()
+    monkeypatch.delenv("BRAINWAVES_CONFIG", raising=False)
+    monkeypatch.setattr(settings, "program_folder", lambda: beside)
+    monkeypatch.setattr(settings, "user_config_path", lambda _name: personal)
+    (beside / "brainwaves.toml").write_text(
+        '[sheets]\nskills = "beside"\n[sync]\npoll_seconds = 9\n'
+    )
+    (personal / "config.toml").write_text('[sheets]\nskills = "personal"\n')
+    config = settings.load_config()
+    assert config.skills_sheet == "personal"
+    assert config.poll_seconds == 9  # what it did not mention is still kept
+
+
+def test_camps_real_credentials_are_not_committed():
+    """Built-in settings are filled by the release build, never checked in.
+
+    A published desktop client secret is not a disaster, but it does let someone put camp's
+    name on a consent screen of their own.
+    """
+    from pathlib import Path
+
+    source = (Path(__file__).resolve().parent.parent / "brainwaves" / "built_in.py").read_text()
+    body = source.split("SETTINGS", 1)[1]
+    assert ".apps.googleusercontent.com" not in body
+    assert "GOCSPX-" not in body

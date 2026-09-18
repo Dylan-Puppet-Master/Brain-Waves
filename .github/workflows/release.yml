@@ -20,6 +20,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
+      - name: Build in camp's settings, so the download needs no config file
+        env:
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          SKILLS_SHEET: ${{ secrets.SKILLS_SHEET }}
+        run: python tools/build_settings.py
       - run: pyinstaller brainwaves.spec
       - uses: actions/upload-artifact@v4
         with:

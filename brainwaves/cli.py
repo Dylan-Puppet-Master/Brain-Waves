@@ -4,7 +4,7 @@ import argparse
 import sys
 
 from brainwaves import __version__
-from brainwaves.config import config_path, load_config
+from brainwaves.config import load_config
 from brainwaves.google import auth
 from brainwaves.sheets.source import CsvWorkbook
 
@@ -33,9 +33,7 @@ def main(argv=None) -> int:
         print("Signed out.")
         return 0
     if arguments.command == "where":
-        print(f"config   {config_path()}")
-        print(f"sign-in  {auth.token_file()}")
-        return 0
+        return _where(config)
     if arguments.command == "sign-in":
         return _sign_in(config)
     if arguments.command == "template":
@@ -44,6 +42,22 @@ def main(argv=None) -> int:
     from brainwaves.app.main import run_app
 
     return run_app(config)
+
+
+def _where(config) -> int:
+    """Say where the settings came from, which is the first question when something is off."""
+    from brainwaves.config import config_paths
+
+    found = [path for path in config_paths() if path.exists()]
+    print("settings file  " + (str(found[-1]) if found else "none, which is usually right"))
+    if not found:
+        print(f"               (one would be read from {config_paths()[-1]})")
+    print(
+        "google client  " + ("set up" if config.has_client else "MISSING - see the install guide")
+    )
+    print("skills doc     " + (config.skills_sheet or "not set; HERO chips will be free text"))
+    print(f"sign-in        {auth.token_file()}")
+    return 0
 
 
 def _template(config, arguments) -> int:
