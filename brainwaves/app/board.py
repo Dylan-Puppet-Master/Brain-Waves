@@ -6,6 +6,7 @@ board's own, so the week reads the same at column eight as it does at column one
 
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import (
+    QApplication,
     QFrame,
     QGridLayout,
     QHBoxLayout,
@@ -23,7 +24,7 @@ from brainwaves.model import DAY_COLUMNS, Week
 
 SLOT_WIDTH = CARD_WIDTH + 2 * SLOT_PADDING
 SLOT_HEIGHT = CARD_HEIGHT + 2 * SLOT_PADDING
-HEADER_HEIGHT = 56
+HEADER_HEIGHT = 68
 
 
 class BoardView(QWidget):
@@ -59,10 +60,18 @@ class BoardView(QWidget):
         self.grid.setSpacing(0)
         self.board.setWidget(self.grid_body)
 
-        self.board.horizontalScrollBar().valueChanged.connect(
-            self.header.horizontalScrollBar().setValue
-        )
-        self.board.verticalScrollBar().valueChanged.connect(self.side.verticalScrollBar().setValue)
+        # The strips label the board, so they may only ever be where the board is. Scrolling
+        # one of them directly — a wheel over it, or clicking a subtitle, which makes the
+        # strip scroll to show what has focus — is corrected rather than merely discouraged.
+        for bar in (
+            self.board.horizontalScrollBar(),
+            self.board.verticalScrollBar(),
+            self.header.horizontalScrollBar(),
+            self.side.verticalScrollBar(),
+        ):
+            bar.valueChanged.connect(self._follow_board)
+        self.header.hand_wheel_to(self.board)
+        self.side.hand_wheel_to(self.board)
 
         top = QHBoxLayout()
         top.setContentsMargins(0, 0, 0, 0)
@@ -92,6 +101,11 @@ class BoardView(QWidget):
         self._fill_side(week)
         self._fill_grid(week, comment_counts)
         self.select(self.selected)
+
+    def _follow_board(self) -> None:
+        """Put the heading strips back where the board is."""
+        self.header.horizontalScrollBar().setValue(self.board.horizontalScrollBar().value())
+        self.side.verticalScrollBar().setValue(self.board.verticalScrollBar().value())
 
     def select(self, card_id: str | None) -> None:
         """Ring one card and unring the rest."""
@@ -225,12 +239,32 @@ def _cabin_tile(cabin, first_of_village: bool) -> QWidget:
     return holder
 
 
-def _strip(orientation) -> tuple[QScrollArea, QWidget]:
-    area = QScrollArea()
-    area.setWidgetResizable(True)
-    area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-    area.setFrameShape(QFrame.NoFrame)
+class Strip(QScrollArea):
+    """A heading strip. It never scrolls itself; the board it labels scrolls it."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.partner: QScrollArea | None = None
+        self.setWidgetResizable(True)
+        self.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.setFrameShape(QFrame.NoFrame)
+        self.setFocusPolicy(Qt.NoFocus)
+
+    def hand_wheel_to(self, partner: QScrollArea) -> None:
+        """Send the wheel to the board, so scrolling over a heading scrolls the week."""
+        self.partner = partner
+
+    def wheelEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """Scroll the board, never the strip."""
+        if self.partner is not None:
+            QApplication.sendEvent(self.partner.viewport(), event)
+            return
+        event.ignore()
+
+
+def _strip(orientation) -> tuple[Strip, QWidget]:
+    area = Strip()
     body = QWidget()
     layout = QHBoxLayout(body) if orientation == Qt.Horizontal else QVBoxLayout(body)
     layout.setContentsMargins(0, 0, 0, 0)

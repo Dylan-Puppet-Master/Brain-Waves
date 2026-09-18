@@ -36,11 +36,22 @@ Hover a card to see everything, materials and notes included.
 | Link to Google Sheets | Pick the Drive folder the week sheets live in |
 | Start New Week | Make a new sheet from the template. It refuses if that week already exists |
 | Cabins | Add, rename or remove cabins. Names starting M, P, O or C fall into Manzi, Pine, Oak and Cedar |
-| Refresh | Read the sheet again now, rather than waiting for the next poll |
+| Refresh | Read everything again now, rather than waiting for the next poll |
 | Check for updates | Ask GitHub for a newer Brain Waves |
 
 The line to the right of the buttons says how full the week is, or what Brain Waves is
 doing at that moment.
+
+## Knowing that something is happening
+
+A thin bar sweeps under the toolbar while a change is on its way to Google, and the line at
+the top right says what is being done. Opening or creating a week takes longer, so those
+take over the window and name the step they are on: creating one writes four tabs and then
+formats them, which is several seconds of work.
+
+Polling says nothing, deliberately. It happens every couple of seconds, and an indicator
+that blinks constantly stops meaning anything. If the network drops, the line at the top
+right says so and Brain Waves keeps trying.
 
 ## Day subtitles
 

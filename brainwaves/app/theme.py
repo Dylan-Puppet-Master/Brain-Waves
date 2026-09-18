@@ -23,10 +23,10 @@ from brainwaves.palette import (
     VILLAGE_COLORS,
 )
 
-CARD_WIDTH = 252
-CARD_HEIGHT = 178
+CARD_WIDTH = 276
+CARD_HEIGHT = 208
 SLOT_PADDING = 8
-CABIN_WIDTH = 132
+CABIN_WIDTH = 152
 
 WARN_BG = "#fdf0dc"
 WARN_INK = "#8a5200"
@@ -34,7 +34,7 @@ WARN_INK = "#8a5200"
 STYLESHEET = f"""
 QWidget {{
     color: {INK};
-    font-size: 12px;
+    font-size: 13px;
 }}
 QMainWindow, QDialog {{ background: {SUNKEN}; }}
 
@@ -46,9 +46,9 @@ QToolBar#chrome {{
 }}
 QLabel#wordmark {{
     color: {ACCENT};
-    font-size: 16px;
+    font-size: 18px;
     font-weight: 700;
-    padding-right: 6px;
+    padding-right: 8px;
 }}
 QLabel#sheetName {{ color: {MUTED}; }}
 QLabel#status {{ color: {MUTED}; }}
@@ -115,16 +115,17 @@ QWidget#dayHeader {{
     border-radius: 8px;
 }}
 QWidget#dayHeader[weekend="true"] {{ background: {PANEL}; }}
-QLabel#dayName {{ font-size: 13px; font-weight: 700; }}
+QLabel#dayName {{ font-size: 17px; font-weight: 700; }}
 QLineEdit#daySubtitle {{
     border: none;
     background: transparent;
     color: {ACCENT};
     padding: 0;
-    font-size: 11px;
+    font-size: 14px;
+    font-weight: 600;
 }}
 QLineEdit#daySubtitle:hover {{ background: {ACCENT_SOFT}; border-radius: 4px; }}
-QLabel#unplacedName {{ color: {MUTED}; font-size: 13px; font-weight: 700; }}
+QLabel#unplacedName {{ color: {MUTED}; font-size: 16px; font-weight: 700; }}
 QPushButton#addColumn {{
     background: {SURFACE};
     border: 1px solid {LINE};
@@ -134,10 +135,40 @@ QPushButton#addColumn {{
     padding: 0;
 }}
 QPushButton#addColumn:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QPushButton#addChip {{
+    background: {ACCENT_SOFT};
+    border: 1px dashed {ACCENT};
+    border-radius: 9px;
+    color: {ACCENT_DARK};
+    font-size: 12px;
+    font-weight: 700;
+    padding: 3px 10px;
+}}
+QPushButton#addChip:hover {{ background: {SURFACE}; border-style: solid; }}
+QFrame#chipPill {{
+    background: {ACCENT_SOFT};
+    border: 1px solid {ACCENT_SOFT};
+    border-radius: 11px;
+}}
+QFrame#chipPill:hover {{ border-color: {ACCENT}; }}
+QLabel#chipPillName {{
+    color: {ACCENT_DARK};
+    font-size: 12px;
+    font-weight: 600;
+}}
+QPushButton#chipPillClose {{
+    background: transparent;
+    border: none;
+    color: {ACCENT};
+    font-size: 15px;
+    font-weight: 700;
+    padding: 0;
+}}
+QPushButton#chipPillClose:hover {{ color: #b3261e; }}
 
 QFrame#cabinTile {{ border-radius: 8px; }}
-QLabel#cabinName {{ font-size: 14px; font-weight: 700; }}
-QLabel#cabinWho {{ font-size: 11px; }}
+QLabel#cabinName {{ font-size: 18px; font-weight: 700; }}
+QLabel#cabinWho {{ font-size: 13px; }}
 
 QFrame#slot {{
     border: 1px dashed transparent;
@@ -157,10 +188,10 @@ QFrame#card {{
 QFrame#card:hover {{ border-color: #b8c3cf; }}
 QFrame#card[selected="true"] {{ border: 2px solid {ACCENT}; }}
 QFrame#card[lifted="true"] {{ background: {PANEL}; }}
-QLabel#cardTitle {{ font-size: 13px; font-weight: 700; }}
-QLabel#cardDescription {{ color: {MUTED}; font-size: 11px; }}
-QLabel#cardLocation {{ color: {INK}; font-size: 11px; font-weight: 600; }}
-QLabel#cardEmpty {{ color: {FAINT}; font-size: 22px; font-weight: 300; }}
+QLabel#cardTitle {{ font-size: 15px; font-weight: 700; }}
+QLabel#cardDescription {{ color: {MUTED}; font-size: 13px; }}
+QLabel#cardLocation {{ color: {INK}; font-size: 13px; font-weight: 600; }}
+QLabel#cardEmpty {{ color: {FAINT}; font-size: 26px; font-weight: 300; }}
 QFrame#addCard {{
     background: transparent;
     border: 1px dashed #c3ccd6;
@@ -171,33 +202,43 @@ QFrame#addCard:hover {{ border-color: {ACCENT}; background: {ACCENT_SOFT}; }}
 QLabel#chip {{
     background: {ACCENT_SOFT};
     color: {ACCENT_DARK};
-    border-radius: 8px;
-    padding: 2px 7px;
-    font-size: 10px;
+    border-radius: 9px;
+    padding: 3px 9px;
+    font-size: 12px;
     font-weight: 600;
 }}
 QLabel#flagChip {{
     background: {PANEL};
     color: {MUTED};
-    border-radius: 8px;
-    padding: 2px 7px;
-    font-size: 10px;
+    border-radius: 9px;
+    padding: 3px 9px;
+    font-size: 12px;
     font-weight: 600;
 }}
 QLabel#riskChip {{
-    border-radius: 8px;
-    padding: 2px 8px;
+    border-radius: 9px;
+    padding: 3px 10px;
     color: {SURFACE};
-    font-size: 10px;
+    font-size: 12px;
     font-weight: 700;
 }}
 QLabel#commentBadge {{
     background: {WARN_BG};
     color: {WARN_INK};
-    border-radius: 8px;
-    padding: 1px 7px;
-    font-size: 10px;
+    border-radius: 9px;
+    padding: 2px 9px;
+    font-size: 12px;
     font-weight: 700;
+}}
+
+QProgressBar {{
+    background: {SUNKEN};
+    border: none;
+    border-radius: 2px;
+}}
+QProgressBar::chunk {{
+    background: {ACCENT};
+    border-radius: 2px;
 }}
 
 QDockWidget {{ titlebar-close-icon: none; font-weight: 600; }}
@@ -213,12 +254,12 @@ QFrame#thread {{
     border-radius: 8px;
 }}
 QFrame#thread[resolved="true"] {{ background: {PANEL}; }}
-QLabel#threadAuthor {{ font-weight: 700; font-size: 11px; }}
-QLabel#threadWhen {{ color: {FAINT}; font-size: 10px; }}
-QLabel#threadText {{ font-size: 12px; }}
-QLabel#replyAuthor {{ color: {MUTED}; font-weight: 600; font-size: 10px; }}
-QLabel#hint {{ color: {FAINT}; font-size: 11px; }}
-QLabel#sectionTitle {{ color: {MUTED}; font-size: 10px; font-weight: 700; }}
+QLabel#threadAuthor {{ font-weight: 700; font-size: 13px; }}
+QLabel#threadWhen {{ color: {FAINT}; font-size: 12px; }}
+QLabel#threadText {{ font-size: 13px; }}
+QLabel#replyAuthor {{ color: {MUTED}; font-weight: 600; font-size: 12px; }}
+QLabel#hint {{ color: {FAINT}; font-size: 12px; }}
+QLabel#sectionTitle {{ color: {MUTED}; font-size: 11px; font-weight: 700; letter-spacing: 1px; }}
 
 QListWidget {{ background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; }}
 QListWidget::item {{ padding: 5px 8px; }}

@@ -286,3 +286,103 @@ def test_the_comment_poll_holds_off_while_changes_are_being_written(window, stor
     waiting = window.jobs.waiting
     window._poll_comments()
     assert window.jobs.waiting == waiting
+
+
+def test_a_flow_layout_gives_no_room_to_a_hidden_widget(app):
+    from PySide6.QtWidgets import QLabel, QWidget
+
+    from brainwaves.app.widgets import FlowLayout
+
+    holder = QWidget()
+    layout = FlowLayout(holder)
+    shown, hidden, last = QLabel("shown"), QLabel("hidden"), QLabel("last")
+    hidden.hide()
+    for widget in (shown, hidden, last):
+        layout.addWidget(widget)
+    holder.resize(400, 60)
+    holder.show()
+    app.processEvents()
+    assert last.y() == shown.y()  # one row, because the hidden label took no room
+    assert last.x() == shown.x() + shown.width() + 4  # placed straight after it
+
+
+def test_the_hero_add_button_stays_visible(app):
+    editor = ChipEditor(("Dylan", "Vic"))
+    editor.resize(420, 80)
+    editor.show()
+    app.processEvents()
+    assert editor.add_button.isVisible()
+    editor.set_values(["Dylan", "Vic"])
+    app.processEvents()
+    assert editor.add_button.isVisible()
+    assert editor.add_button.y() == 0  # still on the first row, not wrapped out of sight
+
+
+def test_the_hero_add_button_survives_every_redraw(app):
+    editor = ChipEditor(("Dylan",))
+    editor.show()
+    for _ in range(4):
+        editor.set_values(["Dylan"])
+        editor._remove("Dylan")
+    app.processEvents()
+    assert editor.add_button.isVisible()
+    assert editor.add_button.parent() is editor
+
+
+def test_the_day_headings_cannot_be_scrolled_away_from_the_board(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.resize(900, 600)
+    board.show()
+    app.processEvents()
+    board.board.horizontalScrollBar().setValue(120)
+    board.header.horizontalScrollBar().setValue(600)
+    app.processEvents()
+    assert board.header.horizontalScrollBar().value() == 120
+
+
+def test_the_cabin_column_cannot_be_scrolled_away_from_the_board(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.resize(900, 400)
+    board.show()
+    app.processEvents()
+    board.board.verticalScrollBar().setValue(90)
+    board.side.verticalScrollBar().setValue(400)
+    app.processEvents()
+    assert board.side.verticalScrollBar().value() == 90
+
+
+def test_the_headings_follow_the_board_when_it_scrolls(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.resize(900, 600)
+    board.show()
+    app.processEvents()
+    board.board.horizontalScrollBar().setValue(250)
+    app.processEvents()
+    assert board.header.horizontalScrollBar().value() == 250
+
+
+def test_saving_shows_the_activity_bar(window, store):
+    assert window.activity.isHidden()
+    window.swap_cards("M1", 0, 3)
+    assert not window.activity.isHidden()
+    window._settle()
+    assert window.activity.isHidden()
+
+
+def test_a_poll_shows_no_activity_bar(window, store):
+    window._poll()
+    assert window.activity.isHidden()
+    window._poll_comments()
+    assert window.activity.isHidden()
+
+
+def test_a_long_job_reports_its_step(window):
+    window.pages.setCurrentWidget(window.welcome)
+    window.welcome.show_working("Creating S2W1")
+    window._job_progress("Formatting the board (2 of 9)")
+    assert window.welcome.detail.text() == "Formatting the board (2 of 9)"
+    assert not window.welcome.bar.isHidden()
+    assert window.welcome.button.isHidden()

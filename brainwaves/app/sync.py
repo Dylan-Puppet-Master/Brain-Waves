@@ -19,6 +19,7 @@ class JobQueue(QThread):
 
     done = Signal(str, object)
     failed = Signal(str, str)
+    progress = Signal(str)
     idle = Signal()
 
     def __init__(self) -> None:

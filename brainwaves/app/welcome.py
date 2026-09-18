@@ -3,6 +3,7 @@
 from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QLabel, QPushButton, QVBoxLayout, QWidget
 
+from brainwaves.app.activity import sweeping_bar
 from brainwaves.palette import LINE, SURFACE
 
 
@@ -30,6 +31,8 @@ class WelcomePage(QWidget):
         self.detail.setObjectName("hint")
         self.detail.setWordWrap(True)
         self.detail.setTextInteractionFlags(Qt.TextSelectableByMouse)
+        self.bar = sweeping_bar(6)
+        self.bar.hide()
 
         inner = QVBoxLayout(self.panel)
         inner.setContentsMargins(28, 26, 28, 26)
@@ -37,6 +40,7 @@ class WelcomePage(QWidget):
         inner.addWidget(self.title)
         inner.addWidget(self.message)
         inner.addWidget(self.button)
+        inner.addWidget(self.bar)
         inner.addWidget(self.detail)
 
         layout = QVBoxLayout(self)
@@ -49,5 +53,19 @@ class WelcomePage(QWidget):
         self.message.setText(message)
         self.button.setText(action)
         self.button.setVisible(bool(action))
+        self.bar.hide()
+        self.detail.setText(detail)
+        self.detail.setVisible(bool(detail))
+
+    def show_working(self, message: str, detail: str = "") -> None:
+        """Say what is being done, with a bar, and offer nothing to press."""
+        self.message.setText(message)
+        self.button.hide()
+        self.bar.show()
+        self.detail.setText(detail)
+        self.detail.setVisible(bool(detail))
+
+    def say(self, detail: str) -> None:
+        """Name the step being worked on, while the bar keeps sweeping."""
         self.detail.setText(detail)
         self.detail.setVisible(bool(detail))

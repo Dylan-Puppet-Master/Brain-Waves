@@ -66,6 +66,14 @@ def when_phrase(moment: datetime) -> str:
     return moment.astimezone().strftime("%d %b")
 
 
+def flows(widget: QWidget) -> None:
+    """Let a widget grow taller as its flow layout wraps, rather than clipping a second row."""
+    policy = widget.sizePolicy()
+    policy.setHeightForWidth(True)
+    policy.setVerticalPolicy(QSizePolicy.Minimum)
+    widget.setSizePolicy(policy)
+
+
 class FlowLayout(QLayout):
     """Lays widgets out left to right, wrapping onto the next line. Used by the chip bars."""
 
@@ -120,8 +128,11 @@ class FlowLayout(QLayout):
         return size
 
     def _lay_out(self, rect: QRect, apply: bool) -> int:
+        """Place or measure the items. A hidden widget takes no room, as in any layout."""
         x, y, line_height = rect.x(), rect.y(), 0
         for item in self._items:
+            if item.isEmpty():
+                continue
             hint = item.sizeHint()
             if x > rect.x() and x + hint.width() > rect.right():
                 x, y = rect.x(), y + line_height + self._spacing

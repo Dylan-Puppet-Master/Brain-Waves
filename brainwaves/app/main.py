@@ -19,11 +19,13 @@ from PySide6.QtWidgets import (
     QSpinBox,
     QStackedWidget,
     QToolBar,
+    QVBoxLayout,
     QWidget,
 )
 
 from brainwaves import __version__
 from brainwaves import comments as binding
+from brainwaves.app.activity import sweeping_bar
 from brainwaves.app.board import BoardView
 from brainwaves.app.comment_panel import CommentPanel
 from brainwaves.app.dialogs import FolderDialog, NewWeekDialog, RosterDialog
@@ -40,6 +42,10 @@ from brainwaves.workspace import Workspace
 
 SIGN_IN = "Sign in with Google"
 CONFIG_HELP = "Brain Waves needs a Google OAuth client in config.toml. See the install guide."
+
+# Jobs that happen on a timer. They light no indicator and raise no dialog, because at a
+# couple of seconds apart an indicator that blinks constantly stops meaning anything.
+QUIET_JOBS = {"sync", "comments", "update-quiet"}
 
 
 def run_app(config: Config | None = None) -> int:
@@ -69,7 +75,10 @@ class MainWindow(QMainWindow):
         self.jobs = JobQueue()
         self.jobs.done.connect(self._job_done)
         self.jobs.failed.connect(self._job_failed)
+        self.jobs.progress.connect(self._job_progress)
+        self.jobs.idle.connect(self._settle)
         self.jobs.start()
+        self.working = 0
 
         self.board = BoardView()
         self.board.card_picked.connect(self.select_card)
@@ -83,7 +92,15 @@ class MainWindow(QMainWindow):
         self.pages = QStackedWidget()
         self.pages.addWidget(self.welcome)
         self.pages.addWidget(self.board)
-        self.setCentralWidget(self.pages)
+        self.activity = sweeping_bar()
+        self.activity.hide()
+        centre = QWidget()
+        stack = QVBoxLayout(centre)
+        stack.setContentsMargins(0, 0, 0, 0)
+        stack.setSpacing(0)
+        stack.addWidget(self.activity)
+        stack.addWidget(self.pages, 1)
+        self.setCentralWidget(centre)
 
         self.comments = CommentPanel()
         self.comments.comment_added.connect(self.add_comment)
@@ -172,8 +189,12 @@ class MainWindow(QMainWindow):
 
     def sign_in(self) -> None:
         """Ask Google for permission, in the browser, off the UI thread."""
-        self._set_busy("Waiting for Google sign-in in your browser...")
-        self.jobs.submit("signin", lambda: auth.sign_in(self.config))
+        self.welcome.show_working(
+            "Finishing sign-in in your browser",
+            "Brain Waves is waiting for Google. It carries on once you are done.",
+        )
+        self.pages.setCurrentWidget(self.welcome)
+        self._submit("signin", lambda: auth.sign_in(self.config), "Waiting for Google...")
 
     def _signed_in(self, credentials) -> None:
         self.workspace = Workspace(credentials, self.config)
@@ -205,8 +226,10 @@ class MainWindow(QMainWindow):
         save_state(self.state)
         week_id = WeekId(self.state.session, self.state.week)
         self._stop_polling()
-        self._set_busy(f"Opening {week_id.title}...")
-        self.jobs.submit("open", lambda: self._open(week_id))
+        if self.store is None:
+            self.welcome.show_working(f"Opening {week_id.title}")
+            self.pages.setCurrentWidget(self.welcome)
+        self._submit("open", lambda: self._open(week_id), f"Opening {week_id.title}...")
 
     def _open(self, week_id: WeekId) -> BoardStore | None:
         sheets = self.workspace.weeks(self.state.folder_id)
@@ -226,12 +249,18 @@ class MainWindow(QMainWindow):
         if dialog.exec() != NewWeekDialog.Accepted:
             return
         week_id = dialog.week_id
-        self._set_busy(f"Creating {week_id.title}...")
-        self.jobs.submit("create", lambda: self._create(week_id))
+        self.welcome.show_working(
+            f"Creating {week_id.title}",
+            "Writing the tabs and formatting them. This takes a few seconds.",
+        )
+        self.pages.setCurrentWidget(self.welcome)
+        self._submit("create", lambda: self._create(week_id), f"Creating {week_id.title}...")
 
     def _create(self, week_id: WeekId) -> WeekId:
         seed = self.store.sheet if self.store is not None else None
-        self.workspace.create_week(self.state.folder_id, week_id, seed)
+        self.workspace.create_week(
+            self.state.folder_id, week_id, seed, report=self.jobs.progress.emit
+        )
         return week_id
 
     def edit_roster(self) -> None:
@@ -333,11 +362,10 @@ class MainWindow(QMainWindow):
 
         Quietly, on startup: nothing is said unless there is something to say.
         """
-        if not quietly:
-            self._set_busy("Checking for updates...")
-        self.jobs.submit(
+        self._submit(
             "update-quiet" if quietly else "update-check",
             lambda: latest_release(self.config.releases_url),
+            "" if quietly else "Checking for updates...",
         )
 
     def _install_update(self, release) -> None:
@@ -350,31 +378,52 @@ class MainWindow(QMainWindow):
         if answer != QMessageBox.Yes:
             self._set_busy("")
             return
-        self._set_busy(f"Downloading {release.version}...")
-        self.jobs.submit("update-install", lambda: install(download(release)))
+        self._submit(
+            "update-install",
+            lambda: install(download(release)),
+            f"Downloading {release.version}...",
+        )
+
+    def _submit(self, name: str, work, message: str = "") -> None:
+        """Send a job, and say so unless it is one of the quiet ones."""
+        if name not in QUIET_JOBS:
+            self.working += 1
+            self.activity.show()
+            if message:
+                self._set_busy(message)
+        self.jobs.submit(name, work)
+
+    def _settle(self) -> None:
+        """The queue has emptied: take the bar down."""
+        self.working = 0
+        self.activity.hide()
+
+    def _job_progress(self, message: str) -> None:
+        """A long job saying which step it is on."""
+        self._set_busy(message)
+        if self.pages.currentWidget() is self.welcome:
+            self.welcome.say(message)
 
     def _push(self, message: str) -> None:
-        self._set_busy(message)
-        self.jobs.submit("flush", self.store.flush)
+        self._submit("flush", self.store.flush, message)
 
     def _poll(self) -> None:
         """Ask Google whether the sheet has moved, and read it if it has."""
         if self.store is None or self.store.busy or self.jobs.waiting:
             return
-        self.jobs.submit("sync", self.store.poll)
+        self._submit("sync", self.store.poll)
 
     def _poll_comments(self) -> None:
         """Read the comment threads. Drive does not report those as changes to the file."""
         if self.store is None or self.store.busy or self.jobs.waiting:
             return
-        self.jobs.submit("comments", self.store.reload_comments)
+        self._submit("comments", self.store.reload_comments)
 
     def refresh(self) -> None:
         """Read everything again now, whatever the revision says."""
         if self.store is None:
             return
-        self._set_busy("Reading the sheet...")
-        self.jobs.submit("reload", self.store.reload)
+        self._submit("reload", self.store.reload, "Reading the sheet...")
 
     def _stop_polling(self) -> None:
         self.poll.stop()
@@ -482,6 +531,7 @@ class MainWindow(QMainWindow):
         self._install_update(release)
 
     def _job_failed(self, name: str, message: str) -> None:
+        self.activity.hide()
         if name == "update-quiet":
             return  # a failed startup check is not worth interrupting anyone for
         if name in {"sync", "comments"}:

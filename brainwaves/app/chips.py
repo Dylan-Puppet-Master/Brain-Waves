@@ -11,8 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from brainwaves.app.widgets import FlowLayout
-from brainwaves.palette import ACCENT_SOFT
+from brainwaves.app.widgets import FlowLayout, flows
 
 
 class ChipEditor(QWidget):
@@ -38,11 +37,12 @@ class ChipEditor(QWidget):
             completer.setFilterMode(Qt.MatchContains)
             completer.activated.connect(lambda _: self.entry.returnPressed.emit())
             self.entry.setCompleter(completer)
-        self.add_button = QPushButton("+")
-        self.add_button.setObjectName("quiet")
-        self.add_button.setFixedWidth(26)
+        self.add_button = QPushButton(f"+ {placeholder.split()[-1].upper()}")
+        self.add_button.setObjectName("addChip")
         self.add_button.setToolTip(placeholder)
+        self.add_button.setCursor(Qt.PointingHandCursor)
         self.add_button.clicked.connect(self._start_entry)
+        flows(self)
         self._redraw()
 
     def set_values(self, values) -> None:
@@ -70,36 +70,41 @@ class ChipEditor(QWidget):
         self.changed.emit()
 
     def _redraw(self) -> None:
+        """Rebuild the chips, keeping the entry and the button as the last two items.
+
+        They are taken out of the layout rather than reparented: `setParent(None)` marks a
+        widget hidden, and re-adding it does not bring it back, which is how the add button
+        came to be invisible.
+        """
         while self._layout.count():
             item = self._layout.takeAt(0)
             widget = item.widget()
-            if widget in (self.entry, self.add_button):
-                widget.setParent(None)
-            elif widget is not None:
+            if widget is not None and widget not in (self.entry, self.add_button):
                 widget.deleteLater()
         for name in self.values:
             self._layout.addWidget(_removable(name, self._remove))
         self._layout.addWidget(self.entry)
         self._layout.addWidget(self.add_button)
         self.entry.setVisible(False)
+        self.add_button.setVisible(True)
         self.updateGeometry()
 
 
 def _removable(name: str, remove) -> QFrame:
-    frame = QFrame()
-    frame.setStyleSheet(f"background: {ACCENT_SOFT}; border-radius: 9px;")
-    layout = QHBoxLayout(frame)
-    layout.setContentsMargins(8, 2, 4, 2)
-    layout.setSpacing(2)
+    """One name, as a pill with a cross that takes it off again."""
+    pill = QFrame()
+    pill.setObjectName("chipPill")
+    layout = QHBoxLayout(pill)
+    layout.setContentsMargins(10, 3, 5, 3)
+    layout.setSpacing(4)
     label = QLabel(name)
-    label.setObjectName("chip")
-    label.setStyleSheet("background: transparent; padding: 0;")
-    close = QPushButton("×")
-    close.setObjectName("quiet")
-    close.setFixedSize(16, 16)
+    label.setObjectName("chipPillName")
+    close = QPushButton("\u00d7")
+    close.setObjectName("chipPillClose")
+    close.setFixedSize(18, 18)
     close.setCursor(Qt.PointingHandCursor)
     close.setToolTip(f"Remove {name}")
     close.clicked.connect(lambda: remove(name))
     layout.addWidget(label)
     layout.addWidget(close)
-    return frame
+    return pill
