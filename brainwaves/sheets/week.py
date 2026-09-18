@@ -9,8 +9,8 @@ from brainwaves.model import (
     DAY_COLUMNS,
     MIN_OVERFLOW_COLUMNS,
     WEEKDAYS,
-    CabinAct,
     Cabin,
+    CabinAct,
     Day,
     Risk,
     Week,
@@ -117,6 +117,11 @@ def card_range(cabin_index: int, column: int) -> str:
     """The A1 reference of a card block's top-left cell."""
     row, left = layout.card_origin(cabin_index, column)
     return index_to_a1(row, left)
+
+
+def subtitle_cell(column: int) -> str:
+    """The A1 reference of a weekday's subtitle cell."""
+    return index_to_a1(layout.SUBTITLE_ROW, layout.column_origin(column))
 
 
 def parse_roster(table: Table) -> tuple[Cabin, ...]:

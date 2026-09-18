@@ -154,7 +154,12 @@ def _widths(tab_id: int, columns: int) -> list[dict]:
 
 def _headings(tab_id: int, week: Week, columns: int) -> list[dict]:
     requests = [
-        {"mergeCells": {"range": _range(tab_id, layout.TITLE_ROW, 0, 1, columns), "mergeType": "MERGE_ALL"}},
+        {
+            "mergeCells": {
+                "range": _range(tab_id, layout.TITLE_ROW, 0, 1, columns),
+                "mergeType": "MERGE_ALL",
+            }
+        },
         _repeat(
             tab_id,
             layout.TITLE_ROW,

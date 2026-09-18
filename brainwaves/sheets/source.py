@@ -172,7 +172,7 @@ class SheetsWorkbook:
 
 
 def a1_to_index(cell: str) -> tuple[int, int]:
-    """"C4" -> (3, 2): the zero-based row and column of an A1 reference."""
+    """The zero-based row and column of an A1 reference: C4 gives (3, 2)."""
     letters = "".join(c for c in cell if c.isalpha()).upper()
     digits = "".join(c for c in cell if c.isdigit())
     column = 0
@@ -182,7 +182,7 @@ def a1_to_index(cell: str) -> tuple[int, int]:
 
 
 def index_to_a1(row: int, column: int) -> str:
-    """(3, 2) -> "C4": the A1 reference of a zero-based row and column."""
+    """The A1 reference of a zero-based row and column: (3, 2) gives C4."""
     letters = ""
     column += 1
     while column:
