@@ -12,7 +12,7 @@ from brainwaves.google.comments import RawComment, anchored_cell, cell_anchor
 from brainwaves.model import Comment, Reply, Week
 from brainwaves.sheets import layout
 
-TAG = re.compile(r"\[bw:([0-9a-zA-Z]{4,})\]")
+TAG = re.compile(r"\[bw:([0-9a-zA-Z]+)\]")
 
 
 def tag(card_id: str) -> str:
@@ -27,8 +27,13 @@ def opening_line(cabin_label: str, column_label: str, title: str, card_id: str) 
 
 
 def strip_tag(text: str) -> str:
-    """The text as a person meant to write it."""
-    return TAG.sub("", text).strip()
+    """The text as a person meant to write it.
+
+    The opening line Brain Waves writes names the card for readers of the Google Sheets
+    sidebar. In Brain Waves the panel already says which card this is, so that line goes.
+    """
+    kept = [line for line in text.splitlines() if not TAG.search(line)]
+    return "\n".join(kept).strip() or TAG.sub("", text).strip()
 
 
 def bind(threads, week: Week, tab_id: int) -> list[Comment]:

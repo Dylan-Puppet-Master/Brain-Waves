@@ -18,10 +18,10 @@ MIN_OVERFLOW_COLUMNS = 3
 class Village(Enum):
     """The four villages, in the order they are shown, keyed by the cabin name prefix."""
 
-    PINE = ("P", "Pine", "younger boys")
-    CEDAR = ("C", "Cedar", "older boys")
     MANZI = ("M", "Manzi", "younger girls")
+    PINE = ("P", "Pine", "younger boys")
     OAK = ("O", "Oak", "older girls")
+    CEDAR = ("C", "Cedar", "older boys")
 
     def __init__(self, prefix: str, label: str, description: str) -> None:
         self.prefix = prefix

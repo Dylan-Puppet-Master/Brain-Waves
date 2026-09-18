@@ -1,0 +1,259 @@
+"""The window's look: one stylesheet, built from the palette the sheet template also uses.
+
+Widgets ask for a look by object name or by a dynamic property, so the rules below are the
+only place a colour is chosen. Changing `brainwaves.palette` changes the app and the
+Google Sheets template together.
+"""
+
+from PySide6.QtGui import QColor, QFont, QPalette
+from PySide6.QtWidgets import QApplication, QWidget
+
+from brainwaves.palette import (
+    ACCENT,
+    ACCENT_DARK,
+    ACCENT_SOFT,
+    FAINT,
+    INK,
+    LINE,
+    MUTED,
+    PANEL,
+    RISK_COLORS,
+    SUNKEN,
+    SURFACE,
+    VILLAGE_COLORS,
+)
+
+CARD_WIDTH = 252
+CARD_HEIGHT = 178
+SLOT_PADDING = 8
+CABIN_WIDTH = 132
+
+WARN_BG = "#fdf0dc"
+WARN_INK = "#8a5200"
+
+STYLESHEET = f"""
+QWidget {{
+    color: {INK};
+    font-size: 12px;
+}}
+QMainWindow, QDialog {{ background: {SUNKEN}; }}
+
+QToolBar#chrome {{
+    background: {SURFACE};
+    border-bottom: 1px solid {LINE};
+    padding: 6px 10px;
+    spacing: 8px;
+}}
+QLabel#wordmark {{
+    color: {ACCENT};
+    font-size: 16px;
+    font-weight: 700;
+    padding-right: 6px;
+}}
+QLabel#sheetName {{ color: {MUTED}; }}
+QLabel#status {{ color: {MUTED}; }}
+QLabel#statusBusy {{ color: {ACCENT}; }}
+QLabel#statusError {{ color: #b3261e; font-weight: 600; }}
+
+QPushButton {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 6px;
+    padding: 5px 12px;
+}}
+QPushButton:hover {{ border-color: {ACCENT}; color: {ACCENT}; }}
+QPushButton:pressed {{ background: {ACCENT_SOFT}; }}
+QPushButton:disabled {{ color: {FAINT}; border-color: {LINE}; }}
+QPushButton#primary {{
+    background: {ACCENT};
+    border-color: {ACCENT};
+    color: {SURFACE};
+    font-weight: 600;
+}}
+QPushButton#primary:hover {{
+    background: {ACCENT_DARK};
+    border-color: {ACCENT_DARK};
+    color: {SURFACE};
+}}
+QPushButton#quiet {{ border-color: transparent; background: transparent; color: {MUTED}; }}
+QPushButton#quiet:hover {{ color: {ACCENT}; }}
+
+QLineEdit, QTextEdit, QPlainTextEdit, QSpinBox, QComboBox {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 6px;
+    padding: 4px 8px;
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {INK};
+}}
+QLineEdit:focus, QTextEdit:focus, QPlainTextEdit:focus, QSpinBox:focus, QComboBox:focus {{
+    border-color: {ACCENT};
+}}
+QComboBox::drop-down {{ border: none; width: 18px; }}
+QSpinBox::up-button, QSpinBox::down-button {{ width: 15px; border: none; }}
+QComboBox QAbstractItemView {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    selection-background-color: {ACCENT_SOFT};
+    selection-color: {INK};
+    outline: none;
+}}
+QCheckBox {{ spacing: 7px; }}
+
+QScrollArea {{ border: none; background: {SUNKEN}; }}
+QScrollBar:vertical, QScrollBar:horizontal {{ background: transparent; margin: 0; }}
+QScrollBar:vertical {{ width: 11px; }}
+QScrollBar:horizontal {{ height: 11px; }}
+QScrollBar::handle {{ background: #c3ccd6; border-radius: 5px; min-height: 36px; min-width: 36px; }}
+QScrollBar::handle:hover {{ background: {MUTED}; }}
+QScrollBar::add-line, QScrollBar::sub-line {{ height: 0; width: 0; }}
+QScrollBar::add-page, QScrollBar::sub-page {{ background: transparent; }}
+
+QWidget#dayHeader {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 8px;
+}}
+QWidget#dayHeader[weekend="true"] {{ background: {PANEL}; }}
+QLabel#dayName {{ font-size: 13px; font-weight: 700; }}
+QLineEdit#daySubtitle {{
+    border: none;
+    background: transparent;
+    color: {ACCENT};
+    padding: 0;
+    font-size: 11px;
+}}
+QLineEdit#daySubtitle:hover {{ background: {ACCENT_SOFT}; border-radius: 4px; }}
+QLabel#unplacedName {{ color: {MUTED}; font-size: 13px; font-weight: 700; }}
+
+QFrame#cabinTile {{ border-radius: 8px; }}
+QLabel#cabinName {{ font-size: 14px; font-weight: 700; }}
+QLabel#cabinWho {{ font-size: 11px; }}
+
+QFrame#slot {{
+    border: 1px dashed transparent;
+    border-radius: 12px;
+}}
+QFrame#slot[hover="true"] {{
+    border: 1px dashed {ACCENT};
+    background: {ACCENT_SOFT};
+}}
+QFrame#slot[muted="true"] {{ background: transparent; }}
+
+QFrame#card {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 10px;
+}}
+QFrame#card:hover {{ border-color: #b8c3cf; }}
+QFrame#card[selected="true"] {{ border: 2px solid {ACCENT}; }}
+QFrame#card[lifted="true"] {{ background: {PANEL}; }}
+QLabel#cardTitle {{ font-size: 13px; font-weight: 700; }}
+QLabel#cardDescription {{ color: {MUTED}; font-size: 11px; }}
+QLabel#cardLocation {{ color: {INK}; font-size: 11px; font-weight: 600; }}
+QLabel#cardEmpty {{ color: {FAINT}; font-size: 22px; font-weight: 300; }}
+QFrame#addCard {{
+    background: transparent;
+    border: 1px dashed #c3ccd6;
+    border-radius: 10px;
+}}
+QFrame#addCard:hover {{ border-color: {ACCENT}; background: {ACCENT_SOFT}; }}
+
+QLabel#chip {{
+    background: {ACCENT_SOFT};
+    color: {ACCENT_DARK};
+    border-radius: 8px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 600;
+}}
+QLabel#flagChip {{
+    background: {PANEL};
+    color: {MUTED};
+    border-radius: 8px;
+    padding: 2px 7px;
+    font-size: 10px;
+    font-weight: 600;
+}}
+QLabel#riskChip {{
+    border-radius: 8px;
+    padding: 2px 8px;
+    color: {SURFACE};
+    font-size: 10px;
+    font-weight: 700;
+}}
+QLabel#commentBadge {{
+    background: {WARN_BG};
+    color: {WARN_INK};
+    border-radius: 8px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-weight: 700;
+}}
+
+QDockWidget {{ titlebar-close-icon: none; font-weight: 600; }}
+QDockWidget::title {{
+    background: {SURFACE};
+    border-bottom: 1px solid {LINE};
+    padding: 8px 10px;
+}}
+QWidget#panel {{ background: {SURFACE}; border-left: 1px solid {LINE}; }}
+QFrame#thread {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 8px;
+}}
+QFrame#thread[resolved="true"] {{ background: {PANEL}; }}
+QLabel#threadAuthor {{ font-weight: 700; font-size: 11px; }}
+QLabel#threadWhen {{ color: {FAINT}; font-size: 10px; }}
+QLabel#threadText {{ font-size: 12px; }}
+QLabel#replyAuthor {{ color: {MUTED}; font-weight: 600; font-size: 10px; }}
+QLabel#hint {{ color: {FAINT}; font-size: 11px; }}
+QLabel#sectionTitle {{ color: {MUTED}; font-size: 10px; font-weight: 700; }}
+
+QListWidget {{ background: {SURFACE}; border: 1px solid {LINE}; border-radius: 6px; }}
+QListWidget::item {{ padding: 5px 8px; }}
+QListWidget::item:selected {{ background: {ACCENT_SOFT}; color: {INK}; }}
+"""
+
+
+def apply_theme(app: QApplication) -> None:
+    """Put the palette and the stylesheet on the application."""
+    app.setStyle("Fusion")
+    app.setPalette(_palette())
+    font = QFont(app.font())
+    font.setPointSizeF(max(font.pointSizeF(), 10.0))
+    app.setFont(font)
+    app.setStyleSheet(STYLESHEET)
+
+
+def restyle(widget: QWidget) -> None:
+    """Make a widget pick up a dynamic property that has just changed."""
+    widget.style().unpolish(widget)
+    widget.style().polish(widget)
+
+
+def risk_color(risk_value: str) -> str:
+    """The colour of a risk level."""
+    return RISK_COLORS.get(risk_value, RISK_COLORS["N"])
+
+
+def village_pair(village: str) -> tuple[str, str]:
+    """Line and fill colours for a village."""
+    return VILLAGE_COLORS.get(village, (MUTED, PANEL))
+
+
+def _palette() -> QPalette:
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(SUNKEN))
+    palette.setColor(QPalette.Base, QColor(SURFACE))
+    palette.setColor(QPalette.AlternateBase, QColor(PANEL))
+    palette.setColor(QPalette.Text, QColor(INK))
+    palette.setColor(QPalette.WindowText, QColor(INK))
+    palette.setColor(QPalette.ButtonText, QColor(INK))
+    palette.setColor(QPalette.Button, QColor(SURFACE))
+    palette.setColor(QPalette.Highlight, QColor(ACCENT))
+    palette.setColor(QPalette.HighlightedText, QColor(SURFACE))
+    palette.setColor(QPalette.ToolTipBase, QColor(INK))
+    palette.setColor(QPalette.ToolTipText, QColor(SURFACE))
+    return palette

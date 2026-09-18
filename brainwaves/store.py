@@ -1,11 +1,12 @@
 """The app's copy of one week, and every change it can make to it.
 
-Google Sheets is the authority. Every change here is written straight through to the sheet
-and also applied locally, so the board answers at once and the next poll agrees with it.
-Writes are one card block at a time, so two villages editing different cards never
-overwrite each other.
+Google Sheets is the authority, but a network round trip is too slow to drag a card
+against. So a change lands in `self.week` at once and its write is queued; `flush` sends
+the queue, in order, from a background thread. Writes are one card block at a time, so two
+villages editing different cards never overwrite each other.
 """
 
+from collections.abc import Callable
 from dataclasses import replace
 
 from brainwaves import comments as binding
@@ -26,6 +27,7 @@ class BoardStore:
         self.locations = sheet.locations
         self.comments: list[Comment] = []
         self.staff_names: tuple[str, ...] = ()
+        self.pending: list[Callable[[], None]] = []
 
     @property
     def workbook(self):
@@ -43,6 +45,16 @@ class BoardStore:
             self.staff_names = self.workspace.staff_names()
         except Exception:  # noqa: BLE001 - HERO chips still work without the list
             self.staff_names = ()
+
+    @property
+    def busy(self) -> bool:
+        """Whether changes are still waiting to reach Google."""
+        return bool(self.pending)
+
+    def flush(self) -> None:
+        """Send every queued change, oldest first. Runs off the UI thread."""
+        while self.pending:
+            self.pending.pop(0)()
 
     def reload(self) -> bool:
         """Read the sheet and the comments again. True if anything on the board changed."""
@@ -63,14 +75,14 @@ class BoardStore:
     def save_card(self, cabin: str, column: int, card: CabinAct | None) -> None:
         """Put a card in a slot, or clear the slot, and write that block."""
         self.week = self.week.place(cabin, column, card)
-        self._write_cards([(cabin, column)])
+        self._queue(lambda: self._write_cards([(cabin, column)]))
 
     def swap(self, cabin: str, one: int, other: int) -> None:
         """Exchange two cards in the same cabin row."""
         if one == other:
             return
         self.week = self.week.swap(cabin, one, other)
-        self._write_cards([(cabin, one), (cabin, other)])
+        self._queue(lambda: self._write_cards([(cabin, one), (cabin, other)]))
 
     def set_subtitle(self, column: int, text: str) -> None:
         """Name what else is happening on a weekday."""
@@ -79,23 +91,21 @@ class BoardStore:
         days = list(self.week.days)
         days[column] = replace(days[column], subtitle=text.strip())
         self.week = replace(self.week, days=tuple(days))
-        self.workbook.write(
-            week_sheet.BOARD_TAB,
-            [[text.strip()]],
-            week_sheet.subtitle_cell(column),
+        self._queue(
+            lambda: self.workbook.write(
+                week_sheet.BOARD_TAB, [[text.strip()]], week_sheet.subtitle_cell(column)
+            )
         )
 
     def set_cabins(self, cabins) -> None:
         """Replace the roster, rewriting the board so every cabin has a row."""
         self.week = replace(self.week, cabins=tuple(cabins))
-        self.workbook.clear(week_sheet.ROSTER_TAB)
-        self.workbook.write(week_sheet.ROSTER_TAB, week_sheet.render_roster(self.week.cabins))
-        self._rewrite_board()
+        self._queue(self._write_roster)
 
     def add_overflow_column(self) -> None:
         """Widen the unplaced zone by one column."""
         self.week = replace(self.week, overflow_columns=self.week.overflow_columns + 1)
-        self._rewrite_board()
+        self._queue(self._rewrite_board)
 
     def add_comment(self, card_id: str, text: str) -> None:
         """Start a thread about a card, anchored to it where Drive allows."""
@@ -107,18 +117,36 @@ class BoardStore:
         label = next(c.label for c in self.week.cabins if c.name == cabin)
         opening = binding.opening_line(label, self._column_label(column), card.title, card_id)
         anchor = binding.anchor_for(self.week, card_id, self.sheet.board_tab_id)
-        self.workspace.comments.create(self.file_id, f"{opening}\n\n{text}", anchor)
-        self.reload_comments()
+        self._queue(
+            lambda: self._after_comment(
+                self.workspace.comments.create(self.file_id, f"{opening}\n\n{text}", anchor)
+            )
+        )
 
     def reply(self, comment_id: str, text: str) -> None:
         """Add a message to a thread."""
-        self.workspace.comments.reply(self.file_id, comment_id, text)
-        self.reload_comments()
+        self._queue(
+            lambda: self._after_comment(
+                self.workspace.comments.reply(self.file_id, comment_id, text)
+            )
+        )
 
     def resolve(self, comment_id: str) -> None:
         """Close a thread."""
-        self.workspace.comments.resolve(self.file_id, comment_id)
+        self._queue(
+            lambda: self._after_comment(self.workspace.comments.resolve(self.file_id, comment_id))
+        )
+
+    def _after_comment(self, _result=None) -> None:
         self.reload_comments()
+
+    def _queue(self, job) -> None:
+        self.pending.append(job)
+
+    def _write_roster(self) -> None:
+        self.workbook.clear(week_sheet.ROSTER_TAB)
+        self.workbook.write(week_sheet.ROSTER_TAB, week_sheet.render_roster(self.week.cabins))
+        self._rewrite_board()
 
     def _column_label(self, column: int) -> str:
         if column < DAY_COLUMNS:

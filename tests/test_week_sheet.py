@@ -73,7 +73,7 @@ def test_a_ragged_sheet_still_parses(week):
 
 def test_roster_is_sorted_into_village_order():
     table = render_roster([Cabin("O1", "Mavis"), Cabin("M1", "Jana"), Cabin("C1", "Javi")])
-    assert [c.name for c in parse_roster(table)] == ["C1", "M1", "O1"]
+    assert [c.name for c in parse_roster(table)] == ["M1", "O1", "C1"]
 
 
 def test_an_empty_roster_is_an_error(week):

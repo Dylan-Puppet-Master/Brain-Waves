@@ -1,0 +1,472 @@
+"""The Brain Waves window.
+
+It holds one week at a time. Google is reached only through `JobQueue`, so the board stays
+responsive; every job's result comes back to `_job_done` and is turned into what the window
+shows.
+"""
+
+import sys
+
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtWidgets import (
+    QApplication,
+    QDockWidget,
+    QLabel,
+    QMainWindow,
+    QMessageBox,
+    QPushButton,
+    QSizePolicy,
+    QSpinBox,
+    QStackedWidget,
+    QToolBar,
+    QWidget,
+)
+
+from brainwaves import __version__
+from brainwaves import comments as binding
+from brainwaves.app.board import BoardView
+from brainwaves.app.comment_panel import CommentPanel
+from brainwaves.app.dialogs import FolderDialog, NewWeekDialog, RosterDialog
+from brainwaves.app.editor import CardDialog
+from brainwaves.app.sync import JobQueue
+from brainwaves.app.theme import apply_theme
+from brainwaves.app.welcome import WelcomePage
+from brainwaves.config import Config, State, load_config, load_state, save_state, with_week
+from brainwaves.google import auth
+from brainwaves.model import DAY_COLUMNS, CabinAct, WeekId
+from brainwaves.store import BoardStore, week_summary
+from brainwaves.update import download, install, latest_release
+from brainwaves.workspace import Workspace
+
+SIGN_IN = "Sign in with Google"
+CONFIG_HELP = "Brain Waves needs a Google OAuth client in config.toml. See the install guide."
+
+
+def run_app(config: Config | None = None) -> int:
+    """Open the window and run until it closes."""
+    app = QApplication.instance() or QApplication(sys.argv)
+    apply_theme(app)
+    window = MainWindow(config or load_config())
+    window.show()
+    window.start()
+    return app.exec()
+
+
+class MainWindow(QMainWindow):
+    """The board, the comments panel, and the toolbar that picks the week."""
+
+    def __init__(self, config: Config) -> None:
+        super().__init__()
+        self.config = config
+        self.state: State = load_state()
+        self.workspace: Workspace | None = None
+        self.store: BoardStore | None = None
+        self.selected_card: str | None = None
+        self.setWindowTitle("Brain Waves")
+        self.resize(1440, 900)
+
+        self.jobs = JobQueue()
+        self.jobs.done.connect(self._job_done)
+        self.jobs.failed.connect(self._job_failed)
+        self.jobs.start()
+
+        self.board = BoardView()
+        self.board.card_picked.connect(self.select_card)
+        self.board.card_edit.connect(self.edit_card)
+        self.board.swap_requested.connect(self.swap_cards)
+        self.board.add_requested.connect(self.add_card)
+        self.board.subtitle_changed.connect(self.set_subtitle)
+        self.board.overflow_requested.connect(self.add_overflow)
+        self.welcome = WelcomePage()
+        self.welcome.acted.connect(self._welcome_action)
+        self.pages = QStackedWidget()
+        self.pages.addWidget(self.welcome)
+        self.pages.addWidget(self.board)
+        self.setCentralWidget(self.pages)
+
+        self.comments = CommentPanel()
+        self.comments.comment_added.connect(self.add_comment)
+        self.comments.reply_added.connect(self.reply_to_comment)
+        self.comments.resolved.connect(self.resolve_comment)
+        dock = QDockWidget("Comments", self)
+        dock.setObjectName("commentsDock")
+        dock.setWidget(self.comments)
+        dock.setFeatures(QDockWidget.DockWidgetMovable | QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.RightDockWidgetArea, dock)
+
+        self._build_toolbar()
+        self.poll = QTimer(self)
+        self.poll.setInterval(max(self.config.poll_seconds, 5) * 1000)
+        self.poll.timeout.connect(self._poll)
+        self._welcome_step = SIGN_IN
+
+    def start(self) -> None:
+        """Pick up where the last run left off: sign in, then open the week."""
+        credentials = auth.saved_credentials()
+        if credentials is None:
+            self._show_welcome(
+                "Sign in with the Google account that can open the cabin act sheets.",
+                SIGN_IN,
+                "" if self.config.has_client else CONFIG_HELP,
+            )
+            return
+        self._signed_in(credentials)
+
+    def closeEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """Let queued writes finish before the window goes."""
+        self.poll.stop()
+        if self.store is not None and self.store.busy:
+            self.jobs.submit("flush", self.store.flush)
+        self.jobs.stop()
+        super().closeEvent(event)
+
+    def _build_toolbar(self) -> None:
+        bar = QToolBar("Main")
+        bar.setObjectName("chrome")
+        bar.setMovable(False)
+        self.addToolBar(bar)
+        wordmark = QLabel("Brain Waves")
+        wordmark.setObjectName("wordmark")
+        bar.addWidget(wordmark)
+        bar.addWidget(QLabel("Session"))
+        self.session_box = _counter(self.state.session)
+        self.week_box = _counter(self.state.week)
+        self.session_box.valueChanged.connect(self.open_week)
+        self.week_box.valueChanged.connect(self.open_week)
+        bar.addWidget(self.session_box)
+        bar.addWidget(QLabel("Week"))
+        bar.addWidget(self.week_box)
+        self.sheet_label = QLabel("")
+        self.sheet_label.setObjectName("sheetName")
+        bar.addWidget(self.sheet_label)
+        bar.addSeparator()
+        self.link_button = _button("Link to Google Sheets", self.link_folder)
+        self.new_button = _button("Start New Week", self.start_new_week)
+        self.roster_button = _button("Cabins", self.edit_roster)
+        self.refresh_button = _button("Refresh", lambda: self._poll(force=True))
+        for button in (self.link_button, self.new_button, self.roster_button, self.refresh_button):
+            bar.addWidget(button)
+        bar.addWidget(_stretch())
+        self.status = QLabel("")
+        self.status.setObjectName("status")
+        bar.addWidget(self.status)
+        bar.addWidget(_button("Check for updates", self.check_for_updates))
+
+    def _show_welcome(self, message: str, action: str, detail: str = "") -> None:
+        self._welcome_step = action
+        self.welcome.show_step(message, action, detail)
+        self.pages.setCurrentWidget(self.welcome)
+        self._set_busy("")
+
+    def _welcome_action(self) -> None:
+        if self._welcome_step == SIGN_IN:
+            self.sign_in()
+        elif self._welcome_step == "Link to Google Sheets":
+            self.link_folder()
+        else:
+            self.start_new_week()
+
+    def sign_in(self) -> None:
+        """Ask Google for permission, in the browser, off the UI thread."""
+        self._set_busy("Waiting for Google sign-in in your browser...")
+        self.jobs.submit("signin", lambda: auth.sign_in(self.config))
+
+    def _signed_in(self, credentials) -> None:
+        self.workspace = Workspace(credentials, self.config)
+        if not self.state.folder_id:
+            self._show_welcome(
+                "Choose the Google Drive folder that holds the Cabin Act Sorting sheets.",
+                "Link to Google Sheets",
+            )
+            return
+        self.open_week()
+
+    def link_folder(self) -> None:
+        """Browse Drive and remember the folder the week sheets live in."""
+        if self.workspace is None:
+            return
+        dialog = FolderDialog(self.workspace.drive, self)
+        if dialog.exec() != FolderDialog.Accepted:
+            return
+        folder_id, name = dialog.folder
+        self.state = State(folder_id, name, self.state.session, self.state.week)
+        save_state(self.state)
+        self.open_week()
+
+    def open_week(self) -> None:
+        """Load the session and week the toolbar shows."""
+        if self.workspace is None or not self.state.folder_id:
+            return
+        self.state = with_week(self.state, self.session_box.value(), self.week_box.value())
+        save_state(self.state)
+        week_id = WeekId(self.state.session, self.state.week)
+        self.poll.stop()
+        self._set_busy(f"Opening {week_id.title}...")
+        self.jobs.submit("open", lambda: self._open(week_id))
+
+    def _open(self, week_id: WeekId) -> BoardStore | None:
+        sheets = self.workspace.weeks(self.state.folder_id)
+        if week_id not in sheets:
+            return None
+        store = BoardStore(self.workspace, self.workspace.open(sheets[week_id].id, week_id))
+        store.load_staff()
+        store.reload_comments()
+        return store
+
+    def start_new_week(self) -> None:
+        """Make a week sheet from the template, refusing to overwrite one that exists."""
+        if self.workspace is None or not self.state.folder_id:
+            self.link_folder()
+            return
+        dialog = NewWeekDialog(self.session_box.value(), self.week_box.value(), self)
+        if dialog.exec() != NewWeekDialog.Accepted:
+            return
+        week_id = dialog.week_id
+        self._set_busy(f"Creating {week_id.title}...")
+        self.jobs.submit("create", lambda: self._create(week_id))
+
+    def _create(self, week_id: WeekId) -> WeekId:
+        seed = self.store.sheet if self.store is not None else None
+        self.workspace.create_week(self.state.folder_id, week_id, seed)
+        return week_id
+
+    def edit_roster(self) -> None:
+        """Add or rename cabins, then rebuild the board around them."""
+        if self.store is None:
+            return
+        dialog = RosterDialog(self.store.week.cabins, self)
+        if dialog.exec() != RosterDialog.Accepted or not dialog.cabins:
+            return
+        self.store.set_cabins(dialog.cabins)
+        self._draw()
+        self._push("Saving cabins...")
+
+    def add_card(self, cabin: str, column: int) -> None:
+        """Put a new card in an empty slot and open it for editing."""
+        self._edit(cabin, column, CabinAct())
+
+    def edit_card(self, card_id: str) -> None:
+        """Open the editor for a card already on the board."""
+        slot = self.store.week.locate(card_id) if self.store else None
+        if slot is None:
+            return
+        self._edit(slot[0], slot[1], self.store.week.card(*slot))
+
+    def _edit(self, cabin: str, column: int, card: CabinAct) -> None:
+        if self.store is None:
+            return
+        dialog = CardDialog(
+            card,
+            f"{cabin} - {self._column_label(column)}",
+            self.store.locations,
+            self.store.staff_names,
+            self,
+        )
+        if dialog.exec() != CardDialog.Accepted:
+            return
+        self.store.save_card(cabin, column, dialog.result_card)
+        self.selected_card = dialog.result_card.id if dialog.result_card else None
+        self._draw()
+        self._push("Saving card...")
+
+    def swap_cards(self, cabin: str, one: int, other: int) -> None:
+        """Exchange two cards in a cabin row."""
+        if self.store is None or one == other:
+            return
+        self.store.swap(cabin, one, other)
+        self._draw()
+        self._push("Moving card...")
+
+    def set_subtitle(self, column: int, text: str) -> None:
+        """Name what else is happening on a weekday."""
+        if self.store is None or self.store.week.days[column].subtitle == text.strip():
+            return
+        self.store.set_subtitle(column, text)
+        self._push("Saving day...")
+
+    def add_overflow(self) -> None:
+        """Widen the unplaced zone."""
+        if self.store is None:
+            return
+        self.store.add_overflow_column()
+        self._draw()
+        self._push("Widening the board...")
+
+    def select_card(self, card_id: str) -> None:
+        """Show one card's comments."""
+        self.selected_card = card_id
+        self.board.select(card_id)
+        self._draw_comments()
+
+    def add_comment(self, card_id: str, text: str) -> None:
+        """Start a thread about a card."""
+        if self.store is None:
+            return
+        self.store.add_comment(card_id, text)
+        self._push("Posting comment...")
+
+    def reply_to_comment(self, comment_id: str, text: str) -> None:
+        """Add a message to a thread."""
+        if self.store is None:
+            return
+        self.store.reply(comment_id, text)
+        self._push("Posting reply...")
+
+    def resolve_comment(self, comment_id: str) -> None:
+        """Close a thread."""
+        if self.store is None:
+            return
+        self.store.resolve(comment_id)
+        self._push("Resolving...")
+
+    def check_for_updates(self) -> None:
+        """Ask GitHub whether a newer Brain Waves has been published."""
+        self._set_busy("Checking for updates...")
+        self.jobs.submit("update-check", lambda: latest_release(self.config.releases_url))
+
+    def _install_update(self, release) -> None:
+        answer = QMessageBox.question(
+            self,
+            "Update available",
+            f"Brain Waves {release.version} is out. You have {__version__}.\n\n"
+            f"{release.notes[:400]}\n\nDownload and install it now?",
+        )
+        if answer != QMessageBox.Yes:
+            self._set_busy("")
+            return
+        self._set_busy(f"Downloading {release.version}...")
+        self.jobs.submit("update-install", lambda: install(download(release)))
+
+    def _push(self, message: str) -> None:
+        self._set_busy(message)
+        self.jobs.submit("flush", self.store.flush)
+
+    def _poll(self, force: bool = False) -> None:
+        if self.store is None or (self.store.busy and not force):
+            return
+        if self.jobs.waiting and not force:
+            return
+        self.jobs.submit("reload", self.store.reload)
+
+    def _draw(self) -> None:
+        if self.store is None:
+            return
+        counts = binding.count_by_card(self.store.comments)
+        self.board.show_week(self.store.week, counts)
+        self.board.select(self.selected_card)
+        self._draw_comments()
+        self.pages.setCurrentWidget(self.board)
+
+    def _draw_comments(self) -> None:
+        if self.store is None:
+            return
+        slot = self.store.week.locate(self.selected_card) if self.selected_card else None
+        card = self.store.week.card(*slot) if slot else None
+        where = f"{slot[0]} - {self._column_label(slot[1])}" if slot else ""
+        threads = binding.for_card(self.store.comments, card.id) if card else []
+        self.comments.show_card(card, where, threads)
+
+    def _column_label(self, column: int) -> str:
+        if self.store is None:
+            return ""
+        if column < DAY_COLUMNS:
+            return self.store.week.days[column].label
+        return f"Unplaced {column - DAY_COLUMNS + 1}"
+
+    def _set_busy(self, message: str) -> None:
+        self.status.setObjectName("statusBusy" if message else "status")
+        self.status.setText(message or self._idle_text())
+        self.status.style().unpolish(self.status)
+        self.status.style().polish(self.status)
+
+    def _idle_text(self) -> str:
+        if self.store is None:
+            return ""
+        return week_summary(self.store.week)
+
+    def _job_done(self, name: str, result) -> None:
+        if name == "signin":
+            self._signed_in(result)
+        elif name == "open":
+            self._opened(result)
+        elif name == "create":
+            self._created(result)
+        elif name == "reload" and result:
+            self._draw()
+        elif name == "update-check":
+            self._checked(result)
+        elif name == "update-install":
+            QMessageBox.information(
+                self, "Update installed", f"Restart Brain Waves to use it.\n\n{result}"
+            )
+        if name in {"flush", "reload", "update-check"}:
+            self._set_busy("")
+        if name == "reload":
+            self._draw_comments()
+
+    def _opened(self, store: BoardStore | None) -> None:
+        week_id = WeekId(self.state.session, self.state.week)
+        if store is None:
+            self.store = None
+            self.sheet_label.setText("")
+            self._show_welcome(
+                f"There is no sheet for {week_id} in "
+                f"{self.state.folder_name or 'the linked folder'}.",
+                "Start New Week",
+                "Link to Google Sheets picks a different folder.",
+            )
+            return
+        self.store = store
+        self.selected_card = None
+        self.sheet_label.setText(f"{store.workbook.title} - {self.state.folder_name}")
+        self._draw()
+        self._set_busy("")
+        self.poll.start()
+
+    def _created(self, week_id: WeekId) -> None:
+        self.session_box.setValue(week_id.session)
+        self.week_box.setValue(week_id.week)
+        self.open_week()
+
+    def _checked(self, release) -> None:
+        if release is None:
+            self._set_busy("")
+            QMessageBox.information(
+                self, "Up to date", f"Brain Waves {__version__} is the newest version."
+            )
+            return
+        self._install_update(release)
+
+    def _job_failed(self, name: str, message: str) -> None:
+        self._set_busy("")
+        if name == "create" and "already" in message:
+            QMessageBox.warning(self, "That week already exists", message)
+            return
+        titles = {
+            "signin": "Could not sign in",
+            "open": "Could not open the week",
+            "create": "Could not create the week",
+            "flush": "Could not save to Google Sheets",
+            "reload": "Could not read Google Sheets",
+        }
+        QMessageBox.critical(self, titles.get(name, "Something went wrong"), message)
+
+
+def _counter(value: int) -> QSpinBox:
+    box = QSpinBox()
+    box.setRange(1, 12)
+    box.setValue(value)
+    box.setFixedWidth(58)
+    return box
+
+
+def _button(text: str, handler) -> QPushButton:
+    button = QPushButton(text)
+    button.clicked.connect(handler)
+    return button
+
+
+def _stretch() -> QWidget:
+    spacer = QWidget()
+    spacer.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+    return spacer
