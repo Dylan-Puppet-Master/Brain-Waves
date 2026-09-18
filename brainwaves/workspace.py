@@ -87,8 +87,19 @@ class Workspace:
                 "again with Start New Week, or add the tab by hand."
             )
 
-    def create_week(self, folder_id: str, week_id: WeekId, seed: WeekSheet | None) -> WeekSheet:
-        """Make a week sheet from the template. Raises WeekExists rather than overwrite."""
+    def create_week(
+        self,
+        folder_id: str,
+        week_id: WeekId,
+        seed: WeekSheet | None,
+        report=None,
+    ) -> WeekSheet:
+        """Make a week sheet from the template. Raises WeekExists rather than overwrite.
+
+        `report` is passed on to `write_template`, which names each step as it goes.
+        """
+        say = report or (lambda _message: None)
+        say("Checking the folder")
         if week_id in self.weeks(folder_id):
             raise WeekExists(
                 f"{week_id.title} is already in this folder. Open it instead, or delete it "
@@ -96,10 +107,11 @@ class Workspace:
             )
         cabins = seed.week.cabins if seed else _default_cabins()
         locations = seed.locations if seed else DEFAULT_LOCATIONS
+        say(f"Creating {week_id.title}")
         spreadsheet = self.client.create(week_id.title, folder_id=folder_id)
         workbook = SheetsWorkbook(spreadsheet)
         week = Week(week_id, cabins=cabins)
-        write_template(workbook, week, locations)
+        write_template(workbook, week, locations, report=report)
         return WeekSheet(workbook, week, tuple(locations))
 
     def staff_names(self) -> tuple[str, ...]:

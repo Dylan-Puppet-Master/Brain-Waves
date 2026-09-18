@@ -143,3 +143,45 @@ def test_making_a_week_reports_what_it_is_doing(tmp_path, week):
     write_template(FakeWorkbook(tmp_path), week, ("Hot Rocks",), report=said.append)
     assert "Writing the board" in said
     assert len(said) >= 4
+
+
+def test_the_window_calls_google_the_way_google_is_declared():
+    """Bind what `app.main` passes against the real signatures.
+
+    Two releases in a row shipped a call the other side did not accept, because the
+    window's jobs only run against Google and so never ran in a test. Binding the
+    signatures is offline and catches exactly that.
+    """
+    from inspect import signature
+
+    from brainwaves.model import WeekId
+    from brainwaves.workspace import Workspace, write_template
+
+    signature(Workspace.create_week).bind(None, "folder-id", WeekId(2, 1), None, report=print)
+    signature(Workspace.read).bind(None, None, WeekId(2, 1))
+    signature(Workspace.read_board).bind(None, None)
+    signature(Workspace.weeks).bind(None, "folder-id")
+    signature(Workspace.open).bind(None, "file-id", WeekId(2, 1))
+    signature(Workspace.staff_names).bind(None)
+    signature(write_template).bind(None, None, (), report=print)
+
+
+def test_the_window_calls_the_store_the_way_the_store_is_declared():
+    from inspect import signature
+
+    from brainwaves.model import CabinAct
+    from brainwaves.store import BoardStore
+
+    signature(BoardStore.save_card).bind(None, "M1", 0, CabinAct())
+    signature(BoardStore.swap).bind(None, "M1", 0, 3)
+    signature(BoardStore.set_subtitle).bind(None, 3, "Pizza Day")
+    signature(BoardStore.set_cabins).bind(None, ())
+    signature(BoardStore.add_overflow_column).bind(None)
+    signature(BoardStore.add_comment).bind(None, "card-id", "text")
+    signature(BoardStore.reply).bind(None, "comment-id", "text")
+    signature(BoardStore.resolve).bind(None, "comment-id")
+    signature(BoardStore.poll).bind(None)
+    signature(BoardStore.reload).bind(None)
+    signature(BoardStore.reload_reference).bind(None)
+    signature(BoardStore.flush).bind(None)
+    signature(BoardStore.load_staff).bind(None)
