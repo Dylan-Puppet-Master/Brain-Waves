@@ -35,7 +35,7 @@ from brainwaves.app.theme import apply_theme
 from brainwaves.app.welcome import WelcomePage
 from brainwaves.config import Config, State, load_config, load_state, save_state, with_week
 from brainwaves.google import auth
-from brainwaves.model import DAY_COLUMNS, CabinAct, WeekId
+from brainwaves.model import DAY_COLUMNS, EXTRA, CabinAct, WeekId
 from brainwaves.store import BoardStore, week_summary
 from brainwaves.update import download, install, latest_release
 from brainwaves.workspace import Workspace
@@ -448,7 +448,11 @@ class MainWindow(QMainWindow):
         slot = self.store.week.locate(self.selected_card) if self.selected_card else None
         card = self.store.week.card(*slot) if slot else None
         where = f"{slot[0]} - {self._column_label(slot[1])}" if slot else ""
-        threads = binding.for_card(self.store.comments, card.id) if card else []
+        threads = (
+            binding.for_card(self.store.comments, card.id)
+            if card
+            else binding.orphaned(self.store.comments, self.store.week)
+        )
         self.comments.show_card(card, where, threads)
 
     def _column_label(self, column: int) -> str:
@@ -456,7 +460,7 @@ class MainWindow(QMainWindow):
             return ""
         if column < DAY_COLUMNS:
             return self.store.week.days[column].label
-        return f"Unplaced {column - DAY_COLUMNS + 1}"
+        return EXTRA
 
     def _say_offline(self, message: str) -> None:
         """Report a failed poll in the status line. It will be tried again in a moment."""

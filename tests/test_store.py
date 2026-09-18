@@ -236,3 +236,86 @@ def test_the_reference_read_also_leaves_an_unwritten_change_alone(tmp_path, week
     assert store.reload_reference() is True
     assert "C9" in [c.name for c in store.week.cabins]
     assert store.week.card("O1", 1).title == "Canoe"
+
+
+def test_writing_a_card_leaves_the_cell_the_comment_is_anchored_to_alone(tmp_path, week):
+    """A Google Sheets comment points at the card's label cell, which must never be rewritten.
+
+    Rewriting it tells Google the commented-on content was deleted, which is what put
+    "original content deleted" on threads people were still using.
+    """
+    from brainwaves.comments import anchor_for
+    from brainwaves.google.comments import anchored_cell
+    from brainwaves.sheets.source import a1_to_index
+
+    store = store_for(tmp_path, week)
+    _, row, column = anchored_cell(anchor_for(store.week, "aaa111", 0))
+    written = []
+    store.workbook.write_many = lambda tab, blocks: written.extend(blocks)
+    store.save_card("M1", 0, None)
+    store.flush()
+    touched = {
+        (a1_to_index(cell)[1] + offset)
+        for cell, table in written
+        for offset in range(max(len(line) for line in table))
+    }
+    assert column not in touched
+    assert row  # the anchor is a real cell on the board
+
+
+def test_deleting_a_card_closes_its_comments(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.add_comment("aaa111", "Who is lifeguarding?")
+    store.flush()
+    store.save_card("M1", 0, None)
+    store.flush()
+    assert [c.resolved for c in store.comments] == [True]
+    assert "was deleted" in store.comments[0].replies[-1].text
+
+
+def test_editing_a_card_leaves_its_comments_open(tmp_path, week):
+    from dataclasses import replace
+
+    store = store_for(tmp_path, week)
+    store.add_comment("aaa111", "Who is lifeguarding?")
+    store.flush()
+    store.save_card("M1", 0, replace(store.week.card("M1", 0), title="Becoming a team again"))
+    store.flush()
+    assert [c.resolved for c in store.comments] == [False]
+
+
+def test_a_swap_leaves_comments_open(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.add_comment("aaa111", "Who is lifeguarding?")
+    store.flush()
+    store.swap("M1", 0, 3)
+    store.flush()
+    assert [c.resolved for c in store.comments] == [False]
+
+
+def test_a_thread_whose_card_went_elsewhere_is_findable(tmp_path, week):
+    from brainwaves.comments import orphaned
+
+    store = store_for(tmp_path, week)
+    store.add_comment("aaa111", "Who is lifeguarding?")
+    store.flush()
+    index = [c.name for c in store.week.cabins].index("M1")
+    store.workbook.write(
+        week_sheet.BOARD_TAB,
+        [["", "", "", "", ""]] * 6,
+        week_sheet.card_range(index, 0),
+    )
+    store.poll()
+    assert store.week.card("M1", 0) is None
+    assert [c.card_id for c in orphaned(store.comments, store.week)] == ["aaa111"]
+
+
+def test_rewriting_the_board_does_not_wipe_the_tab(tmp_path, week):
+    cleared = []
+    store = store_for(tmp_path, week)
+    store.workbook.clear = lambda tab: cleared.append(tab)
+    store.add_overflow_column()
+    store.flush()
+    assert week_sheet.BOARD_TAB not in cleared
+    store.reload()
+    assert store.week.card("M1", 0).title == "Becoming a team"

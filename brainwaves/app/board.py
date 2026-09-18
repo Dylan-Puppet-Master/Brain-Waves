@@ -20,7 +20,7 @@ from PySide6.QtWidgets import (
 
 from brainwaves.app.card import AddCard, CardWidget, SlotWidget
 from brainwaves.app.theme import CABIN_WIDTH, CARD_HEIGHT, CARD_WIDTH, SLOT_PADDING, village_pair
-from brainwaves.model import DAY_COLUMNS, Week
+from brainwaves.model import DAY_COLUMNS, EXTRA, Week
 
 SLOT_WIDTH = CARD_WIDTH + 2 * SLOT_PADDING
 SLOT_HEIGHT = CARD_HEIGHT + 2 * SLOT_PADDING
@@ -144,7 +144,7 @@ class BoardView(QWidget):
             box.addWidget(subtitle)
             return outer
         holder.setProperty("weekend", True)
-        name = QLabel(f"Unplaced {column - DAY_COLUMNS + 1}")
+        name = QLabel(EXTRA)
         name.setObjectName("unplacedName")
         row = QHBoxLayout()
         row.setContentsMargins(0, 0, 0, 0)

@@ -26,7 +26,7 @@ from brainwaves.palette import (
 CARD_WIDTH = 276
 CARD_HEIGHT = 208
 SLOT_PADDING = 8
-CABIN_WIDTH = 152
+CABIN_WIDTH = 168
 
 WARN_BG = "#fdf0dc"
 WARN_INK = "#8a5200"
@@ -168,7 +168,7 @@ QPushButton#chipPillClose:hover {{ color: #b3261e; }}
 
 QFrame#cabinTile {{ border-radius: 8px; }}
 QLabel#cabinName {{ font-size: 18px; font-weight: 700; }}
-QLabel#cabinWho {{ font-size: 13px; }}
+QLabel#cabinWho {{ font-size: 17px; font-weight: 600; }}
 
 QFrame#slot {{
     border: 1px dashed transparent;
@@ -230,6 +230,14 @@ QLabel#commentBadge {{
     font-size: 12px;
     font-weight: 700;
 }}
+
+QFrame#welcomePanel {{
+    background: {SURFACE};
+    border: 1px solid {LINE};
+    border-radius: 14px;
+}}
+QFrame#welcomePanel > QLabel {{ border: none; background: transparent; }}
+QLabel#welcomeMessage {{ color: {MUTED}; font-size: 14px; }}
 
 QProgressBar {{
     background: {SUNKEN};

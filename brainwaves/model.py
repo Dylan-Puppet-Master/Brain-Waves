@@ -11,6 +11,7 @@ from enum import Enum
 from brainwaves.names import new_card_id
 
 WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
+EXTRA = "Extra"  # what the columns past Friday are called, wherever they are named
 DAY_COLUMNS = len(WEEKDAYS)
 MIN_OVERFLOW_COLUMNS = 3
 

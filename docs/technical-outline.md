@@ -38,6 +38,13 @@ Google Drive ──┬── comments ──▶ google/comments.py ──▶ com
 position, and the whole point of the program is that positions change. The id lives in a
 hidden column of each card block, so it survives being read and written by anyone.
 
+**A card is written without touching what a comment points at.** Sheets pins a comment to a
+cell and orphans it when that cell is rewritten, and Brain Waves rewrites cards constantly.
+So a thread is anchored to the card's label cell — the one that reads `Activity`, which is
+written once when the board is laid out and never again — and a card write goes only to the
+value and flag columns beside it. That is also why laying the board out again clears only
+what lies beyond it rather than wiping the tab.
+
 **Comments are Google's, not ours.** A tab of our own would have been simpler to write and
 worse to use: no notifications, no sidebar, no author. The cost is that anchoring a new
 thread to a cell uses an undocumented shape, so `CommentStore.create` falls back to an

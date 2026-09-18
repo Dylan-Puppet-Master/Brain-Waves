@@ -185,3 +185,43 @@ def test_the_window_calls_the_store_the_way_the_store_is_declared():
     signature(BoardStore.reload_reference).bind(None)
     signature(BoardStore.flush).bind(None)
     signature(BoardStore.load_staff).bind(None)
+
+
+def test_nothing_is_merged_across_the_frozen_edge(requests):
+    """Google Sheets refuses to merge frozen cells with unfrozen ones.
+
+    Creating a week failed on exactly this, so the freeze line is read back out of the
+    batch and every merge in it is checked against it.
+    """
+    frozen = next(
+        request["updateSheetProperties"]["properties"]["gridProperties"]
+        for request in requests
+        if "updateSheetProperties" in request
+    )
+    rows, columns = frozen["frozenRowCount"], frozen["frozenColumnCount"]
+    for request in requests:
+        if "mergeCells" not in request:
+            continue
+        span = request["mergeCells"]["range"]
+        assert not span["startRowIndex"] < rows < span["endRowIndex"], span
+        assert not span["startColumnIndex"] < columns < span["endColumnIndex"], span
+
+
+def test_no_merge_overlaps_another(requests):
+    """Sheets refuses a merge that crosses one already there."""
+    seen: list[tuple[int, int, int, int]] = []
+    for request in requests:
+        if "mergeCells" not in request:
+            continue
+        span = request["mergeCells"]["range"]
+        box = (
+            span["startRowIndex"],
+            span["endRowIndex"],
+            span["startColumnIndex"],
+            span["endColumnIndex"],
+        )
+        for other in seen:
+            rows_overlap = box[0] < other[1] and other[0] < box[1]
+            columns_overlap = box[2] < other[3] and other[2] < box[3]
+            assert not (rows_overlap and columns_overlap), (box, other)
+        seen.append(box)

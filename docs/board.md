@@ -58,7 +58,7 @@ right says so and Brain Waves keeps trying.
 Click the grey line under a day's name and type. "Pizza Day" or "Coco's Day" next to
 Thursday saves someone planning a picnic that day.
 
-## Unplaced columns
+## Extra columns
 
 The three columns to the right of Friday hold activities with no day yet. The **+** in the
 last heading adds another column. They are part of the sheet like any other column, so they

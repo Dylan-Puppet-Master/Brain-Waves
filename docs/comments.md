@@ -26,6 +26,27 @@ The card id also lives on the sheet, in a hidden column at the right-hand edge o
 card block. Deleting that column loses the thread's hold on its card; the thread itself is
 safe, and will fall back to its anchor.
 
+## When an activity is deleted
+
+Deleting a card in Brain Waves answers each of its open threads to say the activity was
+deleted, and closes them. The discussion is kept — Google shows resolved threads to anyone
+who asks for them — but nobody is left reading an argument about an activity that is no
+longer on the board.
+
+An activity deleted on the sheet instead leaves its threads behind, because Brain Waves did
+not do it and will not close someone else's discussion on a guess. Those threads are listed
+in the comments panel when no card is selected, under **Comments with no activity**, where
+they can be read and resolved.
+
+## Why a comment does not say "original content deleted"
+
+A Google Sheets comment is pinned to a cell, and Sheets marks it orphaned if that cell's
+contents are rewritten. Brain Waves writes a card often — every edit, every drag — so it is
+careful never to write the cell the comment is pinned to: a thread is anchored to the card's
+label cell, in the narrow column that reads `Activity`, and card writes go only to the value
+and flag columns beside it. Laying the board out again, for a new cabin or a new Extra
+column, clears only what lies past the board rather than wiping the tab.
+
 !!! note
     A thread anchored to a cell in the Sheets sidebar belongs to the card that is in that
     cell **now**. If the Brain in Brain Waves moves cards around after someone comments in

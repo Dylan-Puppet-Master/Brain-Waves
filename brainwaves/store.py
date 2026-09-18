@@ -25,8 +25,9 @@ from dataclasses import replace
 from threading import Lock
 
 from brainwaves import comments as binding
-from brainwaves.model import DAY_COLUMNS, CabinAct, Comment, Week
+from brainwaves.model import DAY_COLUMNS, EXTRA, CabinAct, Comment, Week
 from brainwaves.names import new_card_id
+from brainwaves.sheets import layout
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.style import board_requests, support_requests
 from brainwaves.sheets.support import render_support
@@ -142,10 +143,32 @@ class BoardStore:
         self.comments = binding.bind(threads, self.week, self.sheet.board_tab_id)
 
     def save_card(self, cabin: str, column: int, card: CabinAct | None) -> None:
-        """Put a card in a slot, or clear the slot, and write that block."""
+        """Put a card in a slot, or clear the slot, and write that block.
+
+        A card that goes takes its discussion with it: the threads about it are answered
+        saying so and closed, rather than left open about an activity nobody can see.
+        """
         with self._lock:
+            gone = self.week.card(cabin, column)
             self.week = self.week.place(cabin, column, card)
             self._queue(lambda: self._write_cards([(cabin, column)]))
+        if gone is not None and (card is None or card.id != gone.id):
+            self.close_threads(gone.id, gone.title)
+
+    def close_threads(self, card_id: str, title: str) -> None:
+        """Answer and resolve every open thread about a card that has gone."""
+        threads = [c for c in self.comments if c.card_id == card_id and not c.resolved]
+        if threads:
+            self._queue(lambda: self._finish(threads, title))
+
+    def _finish(self, threads, title: str) -> None:
+        subject = title or "the activity"
+        for thread in threads:
+            self.workspace.comments.reply(
+                self.file_id, thread.id, f"{subject} was deleted, so this is closed."
+            )
+            self.workspace.comments.resolve(self.file_id, thread.id)
+        self.reload_comments()
 
     def swap(self, cabin: str, one: int, other: int) -> None:
         """Exchange two cards in the same cabin row."""
@@ -223,20 +246,17 @@ class BoardStore:
         self._rewrite_board()
 
     def _column_label(self, column: int) -> str:
-        if column < DAY_COLUMNS:
-            return self.week.days[column].label
-        return f"Unplaced {column - DAY_COLUMNS + 1}"
+        return self.week.days[column].label if column < DAY_COLUMNS else EXTRA
 
     def _write_cards(self, slots) -> None:
+        """Write the cards in these slots, in one request, data cells only."""
         index_of = {cabin.name: index for index, cabin in enumerate(self.week.cabins)}
+        blocks = []
         for cabin, column in slots:
-            if cabin not in index_of:
-                continue
-            self.workbook.write(
-                week_sheet.BOARD_TAB,
-                week_sheet.card_block(self.week.card(cabin, column)),
-                week_sheet.card_range(index_of[cabin], column),
-            )
+            if cabin in index_of:
+                card = self.week.card(cabin, column)
+                blocks += week_sheet.card_ranges(index_of[cabin], column, card)
+        self.workbook.write_many(week_sheet.BOARD_TAB, blocks)
         self._write_support()
 
     def _write_support(self) -> None:
@@ -246,8 +266,10 @@ class BoardStore:
         self.workbook.apply(support_requests(view, self.workbook.tab_id(week_sheet.REQUESTS_TAB)))
 
     def _rewrite_board(self) -> None:
-        self.workbook.clear(week_sheet.BOARD_TAB)
+        """Lay the whole board out again, for a change of shape rather than of content."""
+        rows, columns = layout.grid_size(len(self.week.cabins), self.week.columns)
         self.workbook.write(week_sheet.BOARD_TAB, week_sheet.render_week(self.week))
+        self.workbook.clear_beyond(week_sheet.BOARD_TAB, rows, columns)
         self.workbook.apply(
             board_requests(
                 self.week,

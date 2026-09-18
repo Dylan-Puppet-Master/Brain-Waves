@@ -7,6 +7,7 @@ editing different cards never overwrite each other.
 
 from brainwaves.model import (
     DAY_COLUMNS,
+    EXTRA,
     MIN_OVERFLOW_COLUMNS,
     WEEKDAYS,
     Cabin,
@@ -91,7 +92,7 @@ def render_week(week: Week) -> Table:
         grid[layout.DAY_ROW][layout.column_origin(index)] = day.name
         grid[layout.SUBTITLE_ROW][layout.column_origin(index)] = day.subtitle
     for index in range(DAY_COLUMNS, week.columns):
-        grid[layout.DAY_ROW][layout.column_origin(index)] = _overflow_name(index)
+        grid[layout.DAY_ROW][layout.column_origin(index)] = EXTRA
     for cabin_index, cabin in enumerate(week.cabins):
         grid[layout.cabin_row(cabin_index)][layout.CABIN_COLUMN] = cabin.sheet_label
         for column in range(week.columns):
@@ -123,6 +124,27 @@ def card_block(card: CabinAct | None) -> Table:
     ]
     block[layout.TITLE][layout.ID_OFFSET] = card.id
     return block
+
+
+def card_ranges(cabin_index: int, column: int, card: CabinAct | None) -> list:
+    """The cells of a card that hold data, as (cell, rows) pairs ready to write.
+
+    The label column is deliberately left out. It never changes, and a Google Sheets
+    comment about a card is anchored to it, so rewriting it would tell Google the
+    commented-on content had been deleted.
+    """
+    row, left = layout.card_origin(cabin_index, column)
+    block = card_block(card)
+    return [
+        (
+            index_to_a1(row, left + layout.VALUE_OFFSET),
+            [[line[layout.VALUE_OFFSET]] for line in block],
+        ),
+        (
+            index_to_a1(row, left + layout.FLAG_VALUE_OFFSET),
+            [line[layout.FLAG_VALUE_OFFSET :] for line in block],
+        ),
+    ]
 
 
 def card_range(cabin_index: int, column: int) -> str:
@@ -166,10 +188,6 @@ def _columns(board: Table) -> int:
     width = max((len(row) for row in board), default=0)
     used = max(0, width - layout.FIRST_CARD_COLUMN + layout.CARD_COLUMNS - 1) // layout.CARD_COLUMNS
     return max(used, DAY_COLUMNS + MIN_OVERFLOW_COLUMNS)
-
-
-def _overflow_name(column: int) -> str:
-    return f"Unplaced {column - DAY_COLUMNS + 1}"
 
 
 def _flag_text(flag) -> str:

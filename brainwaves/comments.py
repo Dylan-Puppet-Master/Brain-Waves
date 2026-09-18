@@ -70,6 +70,21 @@ def count_by_card(comments) -> dict[str, int]:
     return counts
 
 
+def orphaned(comments, week: Week) -> list[Comment]:
+    """Open threads about cards that are no longer on the board.
+
+    A card deleted in Brain Waves has its threads answered and closed. One deleted on the
+    sheet, or in a week whose cabins have changed, leaves its threads behind; they are
+    shown rather than left where nobody will ever find them.
+    """
+    live = {card.id for card in week.cards.values()}
+    return sorted(
+        (c for c in comments if c.card_id not in live and not c.resolved),
+        key=lambda c: c.latest,
+        reverse=True,
+    )
+
+
 def for_card(comments, card_id: str) -> list[Comment]:
     """One card's threads, open ones first."""
     mine = [c for c in comments if c.card_id == card_id]

@@ -25,7 +25,7 @@ def test_render_puts_the_title_and_day_names_where_they_belong(week):
     grid = render_week(week)
     assert grid[layout.TITLE_ROW][0] == "Cabin Act Sorting - S2W1"
     assert grid[layout.DAY_ROW][layout.column_origin(0)] == "Monday"
-    assert grid[layout.DAY_ROW][layout.column_origin(DAY_COLUMNS)] == "Unplaced 1"
+    assert grid[layout.DAY_ROW][layout.column_origin(DAY_COLUMNS)] == "Extra"
 
 
 def test_a_card_block_holds_every_field(week):

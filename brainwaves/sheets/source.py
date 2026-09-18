@@ -33,8 +33,14 @@ class Workbook(Protocol):
     def write(self, tab: str, table: Table, cell: str = "A1") -> None:
         """Put a block of cells at `cell`, leaving everything around it alone."""
 
+    def write_many(self, tab: str, blocks) -> None:
+        """Put several blocks of cells, given as (cell, rows) pairs, in one request."""
+
     def clear(self, tab: str) -> None:
         """Empty a tab, creating it if it is missing."""
+
+    def clear_beyond(self, tab: str, rows: int, columns: int) -> None:
+        """Empty whatever lies below or to the right of a block of that size."""
 
     def tab_id(self, tab: str) -> int:
         """The numeric id the Sheets API uses for a tab."""
@@ -78,9 +84,19 @@ class CsvWorkbook:
             grid[row + offset][column : column + len(line)] = line
         self._save(tab, grid)
 
+    def write_many(self, tab: str, blocks) -> None:
+        """Overlay each block in turn."""
+        for cell_reference, table in blocks:
+            self.write(tab, table, cell_reference)
+
     def clear(self, tab: str) -> None:
         """Empty the file, creating it if missing."""
         self._save(tab, [])
+
+    def clear_beyond(self, tab: str, rows: int, columns: int) -> None:
+        """Drop the rows and columns past the block."""
+        grid = [row[:columns] for row in self.read(tab)[:rows]]
+        self._save(tab, grid)
 
     def tab_id(self, tab: str) -> int:
         """CSV files have no tab ids; the name's position stands in for one."""
@@ -175,6 +191,46 @@ class SheetsWorkbook:
             params={"valueInputOption": "USER_ENTERED"},
             body={"values": [[literal(value) for value in row] for row in table]},
         )
+
+    def write_many(self, tab: str, blocks) -> None:
+        """Put several blocks of cells in one request.
+
+        A swap writes two cards, which is four ranges and one call.
+        """
+        if not blocks:
+            return
+        self.spreadsheet.values_batch_update(
+            {
+                "valueInputOption": "USER_ENTERED",
+                "data": [
+                    {
+                        "range": f"'{tab}'!{cell_reference}",
+                        "values": [[literal(value) for value in row] for row in table],
+                    }
+                    for cell_reference, table in blocks
+                ],
+            }
+        )
+
+    def clear_beyond(self, tab: str, rows: int, columns: int) -> None:
+        """Empty what lies past the block, leaving the block itself untouched.
+
+        Clearing the whole tab and rewriting it would orphan every comment anchored to it,
+        so a board that has shrunk is tidied at its edges instead.
+        """
+        held_rows, held_columns = self.size(tab)
+        ranges = []
+        if held_rows > rows:
+            ranges.append(
+                f"'{tab}'!{index_to_a1(rows, 0)}:{index_to_a1(held_rows - 1, held_columns - 1)}"
+            )
+        if held_columns > columns:
+            ranges.append(
+                f"'{tab}'!{index_to_a1(0, columns)}:"
+                f"{index_to_a1(max(rows - 1, 0), held_columns - 1)}"
+            )
+        if ranges:
+            self.spreadsheet.values_batch_clear({"ranges": ranges})
 
     def clear(self, tab: str) -> None:
         """Empty a worksheet, adding it if missing."""

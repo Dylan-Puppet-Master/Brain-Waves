@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from brainwaves.app.widgets import FlowLayout, flows
+from brainwaves.app.widgets import FlowLayout, height_follows_width
 
 
 class ChipEditor(QWidget):
@@ -42,7 +42,7 @@ class ChipEditor(QWidget):
         self.add_button.setToolTip(placeholder)
         self.add_button.setCursor(Qt.PointingHandCursor)
         self.add_button.clicked.connect(self._start_entry)
-        flows(self)
+        height_follows_width(self)
         self._redraw()
 
     def set_values(self, values) -> None:

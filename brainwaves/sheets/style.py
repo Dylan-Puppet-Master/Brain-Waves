@@ -197,8 +197,10 @@ def _widths(tab_id: int, columns: int) -> list[dict]:
 
 
 def _headings(tab_id: int, week: Week, columns: int) -> list[dict]:
+    # The title is not merged: the cabin column is frozen and the rest is not, and Google
+    # Sheets will not merge across that line. It has nothing to its right to run into, so
+    # it simply overflows, which looks the same and is one less thing to go wrong.
     requests = [
-        _merge(tab_id, layout.TITLE_ROW, 0, 1, columns),
         _repeat(
             tab_id,
             layout.TITLE_ROW,

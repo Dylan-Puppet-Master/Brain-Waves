@@ -4,7 +4,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
 import pytest
 from PySide6.QtCore import QMimeData
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QLabel
 
 from brainwaves.app.board import BoardView
 from brainwaves.app.card import MIME, CardWidget, SlotWidget
@@ -395,3 +395,45 @@ def test_a_long_job_reports_its_step(window):
     assert window.welcome.detail.text() == "Formatting the board (2 of 9)"
     assert not window.welcome.bar.isHidden()
     assert window.welcome.button.isHidden()
+
+
+def test_the_welcome_panel_draws_no_box_around_its_text(app):
+    """QLabel is a QFrame, so a plain `QFrame` rule puts a border round every label."""
+    from brainwaves.app.theme import STYLESHEET
+
+    for rule in STYLESHEET.split("}"):
+        if "border:" in rule and "QFrame" in rule:
+            assert "#" in rule.split("{")[0], rule
+
+
+def test_the_welcome_panel_gives_wrapped_text_the_room_it_needs(app):
+    from brainwaves.app.welcome import TEXT_WIDTH, WelcomePage
+
+    page = WelcomePage()
+    page.show()
+    short = "Opening S2W1"
+    page.show_working(short)
+    one_line = page.message.minimumHeight()
+    page.show_working(
+        "Choose the Google Drive folder that holds the Cabin Act Sorting sheets, "
+        "which is usually somewhere inside the shared summer drive."
+    )
+    assert page.message.minimumHeight() > one_line
+    assert page.message.minimumHeight() >= page.message.heightForWidth(TEXT_WIDTH)
+
+
+def test_the_welcome_panel_hides_text_it_has_none_of(app):
+    from brainwaves.app.welcome import WelcomePage
+
+    page = WelcomePage()
+    page.show_step("Sign in", "Sign in with Google")
+    assert page.detail.isHidden()
+    assert page.detail.minimumHeight() == 0
+
+
+def test_extra_columns_are_called_extra(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    headings = board.header_body.findChildren(QLabel)
+    assert "Extra" in [label.text() for label in headings]
+    assert not any("Unplaced" in label.text() for label in headings)

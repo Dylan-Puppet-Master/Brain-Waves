@@ -66,8 +66,12 @@ def when_phrase(moment: datetime) -> str:
     return moment.astimezone().strftime("%d %b")
 
 
-def flows(widget: QWidget) -> None:
-    """Let a widget grow taller as its flow layout wraps, rather than clipping a second row."""
+def height_follows_width(widget: QWidget) -> None:
+    """Let a widget grow taller as its contents wrap, rather than clipping the second line.
+
+    Qt knows how tall a wrapped label or a flow layout wants to be, but does not act on it
+    unless the size policy says to, so a wrapped second line is quietly cut off.
+    """
     policy = widget.sizePolicy()
     policy.setHeightForWidth(True)
     policy.setVerticalPolicy(QSizePolicy.Minimum)

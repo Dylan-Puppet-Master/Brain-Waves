@@ -77,11 +77,21 @@ class CommentPanel(QWidget):
         self._set_enabled(False)
 
     def show_card(self, card: CabinAct | None, where: str, comments: list[Comment]) -> None:
-        """Point the panel at a card, or at nothing."""
+        """Point the panel at a card, or, with no card, at threads that have lost theirs."""
         self.card = card
         self.comments = comments
-        self.heading.setText(card.title or "Untitled" if card else "No card selected")
-        self.where.setText(where if card else "Click a card to read and write its comments")
+        if card is not None:
+            self.heading.setText(card.title or "Untitled")
+            self.where.setText(where)
+        elif comments:
+            self.heading.setText("Comments with no activity")
+            self.where.setText(
+                "The activity these were about is no longer on the board. Resolve one to "
+                "put it away."
+            )
+        else:
+            self.heading.setText("No card selected")
+            self.where.setText("Click a card to read and write its comments")
         self._set_enabled(card is not None)
         self._redraw()
 

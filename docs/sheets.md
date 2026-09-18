@@ -38,6 +38,10 @@ same:
 Filling a card in on the sheet rather than in Brain Waves works fine: the next poll picks
 it up, and a card with no id is given one.
 
+Brain Waves writes only the value and flag columns of a card, never the label column. A
+Google Sheets comment about a card is anchored to that label cell, and rewriting it would
+tell Google the commented-on content had been deleted. See [Comments](comments.md).
+
 ## Roster
 
 `Cabin | Counselor | Co-Counselor`, one row per cabin. This tab decides which cabins have
