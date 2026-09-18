@@ -8,6 +8,8 @@ import csv
 from pathlib import Path
 from typing import Protocol
 
+from brainwaves.google.retry import retrying
+
 Table = list[list[str]]
 
 # Formatting a whole week is a large request; the API takes it more happily in pieces.
@@ -140,7 +142,8 @@ class SheetsWorkbook:
 
     def _worksheets(self) -> dict[str, int]:
         if self._tabs is None:
-            self._tabs = {ws.title: ws.id for ws in self.spreadsheet.worksheets()}
+            sheets = retrying(self.spreadsheet.worksheets)
+            self._tabs = {ws.title: ws.id for ws in sheets}
         return self._tabs
 
     def tabs(self) -> list[str]:
@@ -156,7 +159,7 @@ class SheetsWorkbook:
 
     def size(self, tab: str) -> tuple[int, int]:
         """The worksheet's grid size, so formatting can grow it without trimming it."""
-        worksheet = self.spreadsheet.worksheet(tab)
+        worksheet = retrying(lambda: self.spreadsheet.worksheet(tab))
         return worksheet.row_count, worksheet.col_count
 
     def read(self, tab: str) -> Table:
@@ -170,7 +173,7 @@ class SheetsWorkbook:
         missing = [tab for tab in tabs if tab not in self._worksheets()]
         if missing:
             raise LoadError(f"no tab {', '.join(repr(t) for t in missing)}")
-        response = self.spreadsheet.values_batch_get([f"'{tab}'" for tab in tabs])
+        response = retrying(lambda: self.spreadsheet.values_batch_get([f"'{tab}'" for tab in tabs]))
         ranges = response.get("valueRanges", [])
         return {
             tab: [list(row) for row in value.get("values", [])]
@@ -186,10 +189,12 @@ class SheetsWorkbook:
         """
         if not table:
             return
-        self.spreadsheet.values_update(
-            f"'{tab}'!{cell}",
-            params={"valueInputOption": "USER_ENTERED"},
-            body={"values": [[literal(value) for value in row] for row in table]},
+        retrying(
+            lambda: self.spreadsheet.values_update(
+                f"'{tab}'!{cell}",
+                params={"valueInputOption": "USER_ENTERED"},
+                body={"values": [[literal(value) for value in row] for row in table]},
+            )
         )
 
     def write_many(self, tab: str, blocks) -> None:
@@ -199,18 +204,17 @@ class SheetsWorkbook:
         """
         if not blocks:
             return
-        self.spreadsheet.values_batch_update(
-            {
-                "valueInputOption": "USER_ENTERED",
-                "data": [
-                    {
-                        "range": f"'{tab}'!{cell_reference}",
-                        "values": [[literal(value) for value in row] for row in table],
-                    }
-                    for cell_reference, table in blocks
-                ],
-            }
-        )
+        body = {
+            "valueInputOption": "USER_ENTERED",
+            "data": [
+                {
+                    "range": f"'{tab}'!{cell_reference}",
+                    "values": [[literal(value) for value in row] for row in table],
+                }
+                for cell_reference, table in blocks
+            ],
+        }
+        retrying(lambda: self.spreadsheet.values_batch_update(body))
 
     def clear_beyond(self, tab: str, rows: int, columns: int) -> None:
         """Empty what lies past the block, leaving the block itself untouched.
@@ -230,7 +234,7 @@ class SheetsWorkbook:
                 f"{index_to_a1(max(rows - 1, 0), held_columns - 1)}"
             )
         if ranges:
-            self.spreadsheet.values_batch_clear({"ranges": ranges})
+            retrying(lambda: self.spreadsheet.values_batch_clear({"ranges": ranges}))
 
     def clear(self, tab: str) -> None:
         """Empty a worksheet, adding it if missing."""
@@ -250,7 +254,7 @@ class SheetsWorkbook:
         for number, chunk in enumerate(batches, start=1):
             if report and len(batches) > 1:
                 report(f"Formatting the board ({number} of {len(batches)})")
-            self.spreadsheet.batch_update({"requests": chunk})
+            retrying(lambda body={"requests": chunk}: self.spreadsheet.batch_update(body))
 
 
 def a1_to_index(cell: str) -> tuple[int, int]:

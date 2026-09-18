@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 
+from brainwaves.google.retry import retrying
 from brainwaves.model import WeekId
 
 FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -46,7 +47,7 @@ class Drive:
 
     def name(self, file_id: str) -> str:
         """One file's name."""
-        response = self.service.files().get(fileId=file_id, fields="name").execute()
+        response = retrying(self.service.files().get(fileId=file_id, fields="name").execute)
         return response.get("name", "")
 
     def move(self, file_id: str, parent: str) -> None:
@@ -63,19 +64,16 @@ class Drive:
         items: list[DriveItem] = []
         page = None
         while True:
-            response = (
-                self.service.files()
-                .list(
-                    q=f"{query} and trashed = false",
-                    fields="nextPageToken, files(id, name, mimeType)",
-                    orderBy="name",
-                    pageSize=PAGE_SIZE,
-                    pageToken=page,
-                    supportsAllDrives=True,
-                    includeItemsFromAllDrives=True,
-                )
-                .execute()
+            request = self.service.files().list(
+                q=f"{query} and trashed = false",
+                fields="nextPageToken, files(id, name, mimeType)",
+                orderBy="name",
+                pageSize=PAGE_SIZE,
+                pageToken=page,
+                supportsAllDrives=True,
+                includeItemsFromAllDrives=True,
             )
+            response = retrying(request.execute)
             items += [
                 DriveItem(f["id"], f["name"], f["mimeType"] == FOLDER_MIME)
                 for f in response.get("files", [])

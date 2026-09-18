@@ -34,13 +34,19 @@ Hover a card to see everything, materials and notes included.
 |---|---|
 | Session, Week | Which sheet is open. Changing either opens that week |
 | Link to Google Sheets | Pick the Drive folder the week sheets live in |
-| Start New Week | Make a new sheet from the template. It refuses if that week already exists |
 | Cabins | Add, rename or remove cabins. Names starting M, P, O or C fall into Manzi, Pine, Oak and Cedar |
 | Refresh | Read everything again now, rather than waiting for the next poll |
 | Check for updates | Ask GitHub for a newer Brain Waves |
 
 The line to the right of the buttons says how full the week is, or what Brain Waves is
 doing at that moment.
+
+## Starting a week
+
+Set the session and week in the toolbar. If there is no sheet for them yet, the window says
+so and offers to make one; press **Start New Week** and the sheet is created from the
+template, with the cabins and locations of the week you had open. It refuses if that week
+already exists, so pressing it twice cannot make two.
 
 ## Knowing that something is happening
 

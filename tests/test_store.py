@@ -319,3 +319,18 @@ def test_rewriting_the_board_does_not_wipe_the_tab(tmp_path, week):
     assert week_sheet.BOARD_TAB not in cleared
     store.reload()
     assert store.week.card("M1", 0).title == "Becoming a team"
+
+
+def test_a_poll_keeps_a_cabin_added_since_the_last_full_read(tmp_path, week):
+    """A poll reads the board alone, so it must be told the cabins as they are now.
+
+    Taking them from the sheet last read instead dropped a cabin added since, and reported
+    the drop as a change.
+    """
+    from brainwaves.model import Cabin
+
+    store = store_for(tmp_path, week)
+    store.set_cabins([*store.week.cabins, Cabin("C9", "Tester")])
+    store.flush()
+    assert store.poll() is False
+    assert "C9" in [c.name for c in store.week.cabins]

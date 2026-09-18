@@ -82,6 +82,12 @@ enough to swap one immutable `Week` for another and never across a network call,
 that finishes to find writes still queued is thrown away — what is on screen is newer than
 what was read, so the next poll reads again.
 
+**Google is allowed to wobble.** A small share of requests come back 429, 500, 502, 503 or
+504, and the network drops out on its own account. None of that means the request was wrong,
+so `google/retry.py` tries again after a longer wait each time. Only what can safely be
+repeated goes through it: reading anything, writing cells, resolving a thread. Posting a
+comment does not, because a second attempt would post it twice.
+
 **A timer never raises a dialog.** A failed poll writes one line in the status bar and is
 tried again; only something a person asked for — opening a week, creating one, saving —
 is worth interrupting them for. At two seconds, the alternative is a wall of dialogs the

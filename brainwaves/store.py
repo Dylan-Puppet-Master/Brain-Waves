@@ -85,8 +85,11 @@ class BoardStore:
         current within a few seconds. A card dragged while this was reading leaves a write
         waiting, and then what was read is already out of date, so it is dropped and the
         next poll reads again.
+
+        The cabins come from the week in hand rather than from the sheet last read, which
+        may not know about a cabin added since.
         """
-        fresh = self.workspace.read_board(self.sheet)
+        fresh = self.workspace.read_board(self.sheet, self.week.cabins)
         with self._lock:
             if self.pending:
                 return False

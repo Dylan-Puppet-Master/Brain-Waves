@@ -11,6 +11,8 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 
+from brainwaves.google.retry import retrying
+
 COMMENT_FIELDS = (
     "id,content,resolved,anchor,createdTime,author/displayName,"
     "replies(id,content,createdTime,author/displayName)"
@@ -55,17 +57,14 @@ class CommentStore:
         threads: list[RawComment] = []
         page = None
         while True:
-            response = (
-                self.service.comments()
-                .list(
-                    fileId=file_id,
-                    fields=FIELDS,
-                    pageSize=PAGE_SIZE,
-                    pageToken=page,
-                    includeDeleted=False,
-                )
-                .execute()
+            request = self.service.comments().list(
+                fileId=file_id,
+                fields=FIELDS,
+                pageSize=PAGE_SIZE,
+                pageToken=page,
+                includeDeleted=False,
             )
+            response = retrying(request.execute)
             threads += [_thread(item) for item in response.get("comments", [])]
             page = response.get("nextPageToken")
             if not page:
@@ -96,12 +95,17 @@ class CommentStore:
 
     def resolve(self, file_id: str, comment_id: str) -> None:
         """Close a thread, the way the Google Sheets Resolve button does."""
-        self.service.replies().create(
-            fileId=file_id,
-            commentId=comment_id,
-            body={"action": "resolve", "content": "Resolved"},
-            fields="id",
-        ).execute()
+        # Resolving twice resolves once, so this one may safely be tried again.
+        retrying(
+            self.service.replies()
+            .create(
+                fileId=file_id,
+                commentId=comment_id,
+                body={"action": "resolve", "content": "Resolved"},
+                fields="id",
+            )
+            .execute
+        )
 
 
 def cell_anchor(tab_id: int, row: int, column: int) -> str:

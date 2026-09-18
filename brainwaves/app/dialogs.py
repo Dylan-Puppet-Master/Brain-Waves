@@ -5,7 +5,6 @@ from PySide6.QtWidgets import (
     QApplication,
     QDialog,
     QDialogButtonBox,
-    QFormLayout,
     QHBoxLayout,
     QHeaderView,
     QLabel,
@@ -13,14 +12,13 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QMessageBox,
     QPushButton,
-    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QVBoxLayout,
 )
 
 from brainwaves.google.drive import ROOT
-from brainwaves.model import Cabin, WeekId, sort_cabins
+from brainwaves.model import Cabin, sort_cabins
 from brainwaves.sheets.week import ROSTER_HEADER
 
 MY_DRIVE = "My Drive"
@@ -101,34 +99,6 @@ class FolderDialog(QDialog):
             self._refresh()
 
 
-class NewWeekDialog(QDialog):
-    """Ask which session and week to create."""
-
-    def __init__(self, session: int, week: int, parent=None) -> None:
-        super().__init__(parent)
-        self.setWindowTitle("Start New Week")
-        self.session = _counter(session)
-        self.week = _counter(week)
-        buttons = QDialogButtonBox()
-        create = buttons.addButton("Create", QDialogButtonBox.AcceptRole)
-        create.setObjectName("primary")
-        buttons.addButton("Cancel", QDialogButtonBox.RejectRole)
-        buttons.accepted.connect(self.accept)
-        buttons.rejected.connect(self.reject)
-        form = QFormLayout()
-        form.addRow("Session", self.session)
-        form.addRow("Week", self.week)
-        layout = QVBoxLayout(self)
-        layout.addWidget(QLabel("A new sheet is made from the template, in the linked folder."))
-        layout.addLayout(form)
-        layout.addWidget(buttons)
-
-    @property
-    def week_id(self) -> WeekId:
-        """The week to create."""
-        return WeekId(self.session.value(), self.week.value())
-
-
 class RosterDialog(QDialog):
     """Add, remove and rename the cabins of a week."""
 
@@ -178,13 +148,6 @@ class RosterDialog(QDialog):
     def _remove(self) -> None:
         for index in sorted({i.row() for i in self.table.selectedIndexes()}, reverse=True):
             self.table.removeRow(index)
-
-
-def _counter(value: int) -> QSpinBox:
-    box = QSpinBox()
-    box.setRange(1, 12)
-    box.setValue(value)
-    return box
 
 
 def _text(item) -> str:

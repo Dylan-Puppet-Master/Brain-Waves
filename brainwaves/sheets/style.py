@@ -455,7 +455,12 @@ def _risk_colors(tab_id: int) -> list[dict]:
                         "condition": {"type": "TEXT_EQ", "values": [{"userEnteredValue": value}]},
                         "format": {
                             "backgroundColor": sheets_color(color),
-                            "textFormat": _text(10, SURFACE, bold=True),
+                            # A conditional format takes only bold, italic, strikethrough
+                            # and the two colours. A font size here is refused outright.
+                            "textFormat": {
+                                "bold": True,
+                                "foregroundColor": sheets_color(SURFACE),
+                            },
                         },
                     },
                 },

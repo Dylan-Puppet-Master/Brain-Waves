@@ -7,7 +7,7 @@ brainwaves/
   model.py, names.py, palette.py     domain objects, identifiers, the shared colours
   config.py, defaults.py             config.toml and saved state, what a new week starts with
   sheets/                            layout, parse and render, formatting, Support Requests, staff names
-  google/                            auth, Drive, Drive comments
+  google/                            auth, Drive, Drive comments, retrying a wobble
   comments.py                        matching Drive threads to cards
   workspace.py                       find, open and create week sheets
   store.py                           one loaded week and every change to it

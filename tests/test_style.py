@@ -225,3 +225,81 @@ def test_no_merge_overlaps_another(requests):
             columns_overlap = box[2] < other[3] and other[2] < box[3]
             assert not (rows_overlap and columns_overlap), (box, other)
         seen.append(box)
+
+
+# A conditional format takes only these. Anything else -- a font size, a font family --
+# is refused, and refused for the whole batch.
+CONDITIONAL_TEXT = {"bold", "italic", "strikethrough", "foregroundColor", "foregroundColorStyle"}
+CONDITIONAL_FORMAT = {
+    "backgroundColor",
+    "backgroundColorStyle",
+    "textFormat",
+}
+
+
+def test_conditional_formats_ask_for_nothing_they_cannot_have(requests):
+    rules = [
+        r["addConditionalFormatRule"]["rule"] for r in requests if "addConditionalFormatRule" in r
+    ]
+    assert rules
+    for rule in rules:
+        shape = rule["booleanRule"]["format"]
+        assert set(shape) <= CONDITIONAL_FORMAT, set(shape) - CONDITIONAL_FORMAT
+        text = shape.get("textFormat", {})
+        assert set(text) <= CONDITIONAL_TEXT, set(text) - CONDITIONAL_TEXT
+
+
+class Unwell(Exception):
+    """Stands in for what gspread and googleapiclient raise, which carry a status."""
+
+    def __init__(self, status):
+        super().__init__(f"HTTP {status}")
+        self.response = type("Response", (), {"status_code": status})()
+
+
+def test_a_wobble_from_google_is_tried_again():
+    from brainwaves.google.retry import retrying
+
+    tries = []
+
+    def flaky():
+        tries.append(len(tries))
+        if len(tries) < 3:
+            raise Unwell(502)
+        return "written"
+
+    assert retrying(flaky, pause=0) == "written"
+    assert len(tries) == 3
+
+
+def test_a_refused_request_is_not_tried_again():
+    import pytest
+
+    from brainwaves.google.retry import retrying
+
+    tries = []
+
+    def refused():
+        tries.append(1)
+        raise Unwell(400)
+
+    with pytest.raises(Unwell):
+        retrying(refused, pause=0)
+    assert len(tries) == 1
+
+
+def test_giving_up_raises_what_google_said():
+    import pytest
+
+    from brainwaves.google.retry import retrying
+
+    with pytest.raises(Unwell):
+        retrying(lambda: (_ for _ in ()).throw(Unwell(503)), attempts=2, pause=0)
+
+
+def test_a_dropped_connection_is_tried_again():
+    from brainwaves.google.retry import is_transient
+
+    assert is_transient(OSError("connection reset"))
+    assert is_transient(Unwell(429))
+    assert not is_transient(ValueError("nonsense"))

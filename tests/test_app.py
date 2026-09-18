@@ -2,15 +2,17 @@ import os
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 
+from dataclasses import replace
+
 import pytest
 from PySide6.QtCore import QMimeData
-from PySide6.QtWidgets import QApplication, QLabel
+from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from brainwaves.app.board import BoardView
 from brainwaves.app.card import MIME, CardWidget, SlotWidget
 from brainwaves.app.chips import ChipEditor
 from brainwaves.app.comment_panel import CommentPanel
-from brainwaves.app.dialogs import NewWeekDialog, RosterDialog
+from brainwaves.app.dialogs import RosterDialog
 from brainwaves.app.editor import CardDialog
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.widgets import when_phrase
@@ -169,11 +171,6 @@ def test_resolved_threads_are_hidden_until_asked_for(app, store):
 def test_the_roster_dialog_returns_cabins_in_village_order(app):
     dialog = RosterDialog([Cabin("O1", "Mavis"), Cabin("M1", "Jana")])
     assert [c.name for c in dialog.cabins] == ["M1", "O1"]
-
-
-def test_the_new_week_dialog_returns_a_week_id(app):
-    dialog = NewWeekDialog(3, 2)
-    assert str(dialog.week_id) == "S3W2"
 
 
 def test_a_card_widget_carries_its_slot(app, store):
@@ -437,3 +434,32 @@ def test_extra_columns_are_called_extra(app, store):
     headings = board.header_body.findChildren(QLabel)
     assert "Extra" in [label.text() for label in headings]
     assert not any("Unplaced" in label.text() for label in headings)
+
+
+def test_the_toolbar_offers_no_way_to_start_a_week(window):
+    """Starting a week is offered where it is needed: on the panel that says there is none."""
+    labels = [button.text() for button in window.findChildren(QPushButton)]
+    assert "Start New Week" not in labels
+
+
+def test_starting_a_week_makes_the_one_the_toolbar_is_showing(window, monkeypatch):
+    from brainwaves.model import WeekId
+
+    made = []
+    window.store = None
+    window.workspace = object()
+    window.state = replace(window.state, folder_id="folder-id", session=4, week=2)
+    monkeypatch.setattr(window, "_create", lambda week_id: made.append(week_id) or week_id)
+    window.start_new_week()
+    window.jobs.stop()
+    assert made == [WeekId(4, 2)]
+    assert "S4W2" in window.welcome.message.text()
+
+
+def test_starting_a_week_without_a_folder_asks_for_one_first(window, monkeypatch):
+    asked = []
+    window.workspace = object()
+    window.state = replace(window.state, folder_id="")
+    monkeypatch.setattr(window, "link_folder", lambda: asked.append(True))
+    window.start_new_week()
+    assert asked == [True]

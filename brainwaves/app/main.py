@@ -28,7 +28,7 @@ from brainwaves import comments as binding
 from brainwaves.app.activity import sweeping_bar
 from brainwaves.app.board import BoardView
 from brainwaves.app.comment_panel import CommentPanel
-from brainwaves.app.dialogs import FolderDialog, NewWeekDialog, RosterDialog
+from brainwaves.app.dialogs import FolderDialog, RosterDialog
 from brainwaves.app.editor import CardDialog
 from brainwaves.app.sync import JobQueue
 from brainwaves.app.theme import apply_theme
@@ -162,10 +162,9 @@ class MainWindow(QMainWindow):
         bar.addWidget(self.sheet_label)
         bar.addSeparator()
         self.link_button = _button("Link to Google Sheets", self.link_folder)
-        self.new_button = _button("Start New Week", self.start_new_week)
         self.roster_button = _button("Cabins", self.edit_roster)
         self.refresh_button = _button("Refresh", self.refresh)
-        for button in (self.link_button, self.new_button, self.roster_button, self.refresh_button):
+        for button in (self.link_button, self.roster_button, self.refresh_button):
             bar.addWidget(button)
         bar.addWidget(_stretch())
         self.status = QLabel("")
@@ -241,14 +240,15 @@ class MainWindow(QMainWindow):
         return store
 
     def start_new_week(self) -> None:
-        """Make a week sheet from the template, refusing to overwrite one that exists."""
+        """Make a sheet for the week the toolbar is showing, from the template.
+
+        Which week it is has already been said twice, in the toolbar and on the panel
+        offering to make it, so it is not asked for a third time.
+        """
         if self.workspace is None or not self.state.folder_id:
             self.link_folder()
             return
-        dialog = NewWeekDialog(self.session_box.value(), self.week_box.value(), self)
-        if dialog.exec() != NewWeekDialog.Accepted:
-            return
-        week_id = dialog.week_id
+        week_id = WeekId(self.state.session, self.state.week)
         self.welcome.show_working(
             f"Creating {week_id.title}",
             "Writing the tabs and formatting them. This takes a few seconds.",
@@ -526,8 +526,6 @@ class MainWindow(QMainWindow):
         self.check_for_updates(quietly=True)
 
     def _created(self, week_id: WeekId) -> None:
-        self.session_box.setValue(week_id.session)
-        self.week_box.setValue(week_id.week)
         self.open_week()
 
     def _checked(self, release) -> None:
