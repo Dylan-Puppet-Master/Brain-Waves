@@ -113,6 +113,18 @@ tried again; only something a person asked for — opening a week, creating one,
 is worth interrupting them for. At two seconds, the alternative is a wall of dialogs the
 moment the wifi dips.
 
+**Only what changed is redrawn.** A board of twenty-one cabins is a hundred and sixty-eight
+slots, and building them all takes about a third of a second — fine when a week opens,
+hopeless as the response to dragging a card. `BoardView.refresh_slots` rebuilds the slots it
+is given and leaves the rest standing, so a move costs two of them. A poll works the same
+way: the board remembers the week it last drew, so `_difference` says which slots somebody
+else changed, and only a change of shape — a new cabin, another Extra column, a new day
+subtitle — falls back to the whole board.
+
+The same rule applies to the small things. Ringing a selected card touches the two cards
+whose ring changed, not all of them, and marking where a dragged card may be dropped
+touches the eight slots that will take it rather than the hundred and sixty that will not.
+
 **The window never talks to Google.** Everything goes through `app/sync.JobQueue`, one job
 at a time, reporting back through signals. There is no other thread, no lock, and no place
 where the window can be waiting on the network.

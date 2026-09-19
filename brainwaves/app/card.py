@@ -198,9 +198,9 @@ class SlotWidget(QFrame):
         event.acceptProposedAction()
         self.dropped.emit(self.cabin, source[1], self.column)
 
-    def set_muted(self, muted: bool) -> None:
-        """Fade the slot while a card from another row is in the air."""
-        self.setProperty("muted", muted)
+    def set_available(self, available: bool) -> None:
+        """Show that a card in the air may be dropped here."""
+        self.setProperty("available", available)
         restyle(self)
 
     def _highlight(self, on: bool) -> None:

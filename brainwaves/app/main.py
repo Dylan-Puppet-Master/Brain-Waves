@@ -310,7 +310,7 @@ class MainWindow(QMainWindow):
             return
         self.store.save_card(cabin, column, dialog.result_card)
         self.selected_card = dialog.result_card.id if dialog.result_card else None
-        self._draw()
+        self._draw_slots([(cabin, column)])
         self._push("Saving card...")
 
     def swap_cards(self, cabin: str, one: int, other: int) -> None:
@@ -318,7 +318,7 @@ class MainWindow(QMainWindow):
         if self.store is None or one == other:
             return
         self.store.swap(cabin, one, other)
-        self._draw()
+        self._draw_slots([(cabin, one), (cabin, other)])
         self._push("Moving card...")
 
     def set_subtitle(self, column: int, text: str) -> None:
@@ -445,14 +445,42 @@ class MainWindow(QMainWindow):
         self.comment_poll.stop()
 
     def _draw(self) -> None:
+        """Draw the whole board. For opening a week, or a change of shape."""
         if self.store is None:
             return
         counts = binding.count_by_card(self.store.comments)
         self.board.show_week(self.store.week, counts, self.store.staff)
         self.board.select(self.selected_card)
+        self._draw_alongside()
+        self.pages.setCurrentWidget(self.board)
+
+    def _draw_slots(self, slots) -> None:
+        """Draw the slots a change touched, and nothing else. This is what a drag uses."""
+        if self.store is None:
+            return
+        counts = binding.count_by_card(self.store.comments)
+        self.board.refresh_slots(self.store.week, slots, counts, self.store.staff)
+        self.board.select(self.selected_card)
+        self._draw_alongside()
+
+    def _draw_changes(self) -> None:
+        """Draw whatever somebody else changed, and only that.
+
+        A colleague moving one card should cost two slots here, not the whole board. The
+        board knows the week it last drew, so the difference is there to be read.
+        """
+        if self.store is None:
+            return
+        changed = _difference(self.board.week, self.store.week)
+        if changed is None:
+            self._draw()
+            return
+        self._draw_slots(changed)
+
+    def _draw_alongside(self) -> None:
+        """The panels beside the board, which are small enough to redraw either way."""
         self.conflicts.show_conflicts(find_conflicts(self.store.week, self.store.staff))
         self._draw_comments()
-        self.pages.setCurrentWidget(self.board)
 
     def _draw_comments(self) -> None:
         if self.store is None:
@@ -501,7 +529,7 @@ class MainWindow(QMainWindow):
         elif name == "create":
             self._created(result)
         elif name in {"reload", "sync"} and result or name == "comments":
-            self._draw()
+            self._draw_changes()
         elif name == "update-check":
             self._checked(result)
         elif name == "update-quiet" and result is not None:
@@ -514,7 +542,7 @@ class MainWindow(QMainWindow):
             self._set_busy("")
         if name == "reload" or (name == "flush" and self.comments_pending):
             self.comments_pending = False
-            self._draw()
+            self._draw_changes()
 
     def _opened(self, store: BoardStore | None) -> None:
         week_id = WeekId(self.state.session, self.state.week)
@@ -569,6 +597,16 @@ class MainWindow(QMainWindow):
             "reload": "Could not read Google Sheets",
         }
         QMessageBox.critical(self, titles.get(name, "Something went wrong"), message)
+
+
+def _difference(drawn, current):
+    """The slots that differ between two weeks, or None if the board's shape changed."""
+    if drawn is None or drawn.cabins != current.cabins or drawn.columns != current.columns:
+        return None
+    if drawn.days != current.days:
+        return None  # a subtitle lives in the heading, which a slot redraw would miss
+    slots = set(drawn.cards) | set(current.cards)
+    return [slot for slot in slots if drawn.cards.get(slot) != current.cards.get(slot)]
 
 
 def _counter(value: int) -> QSpinBox:

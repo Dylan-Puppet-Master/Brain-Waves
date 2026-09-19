@@ -77,8 +77,7 @@ def test_dropping_asks_for_a_swap(app, store):
     board.show_week(store.week, {})
     seen = []
     board.swap_requested.connect(lambda cabin, one, other: seen.append((cabin, one, other)))
-    slot = next(s for s in board.slots if s.cabin == "M1" and s.column == 3)
-    slot.dropped.emit("M1", 0, 3)
+    board.slots["M1", 3].dropped.emit("M1", 0, 3)
     assert seen == [("M1", 0, 3)]
 
 
@@ -646,3 +645,75 @@ def test_a_shared_drive_is_a_folder_you_can_choose(app):
     dialog.open_button.click()
     assert dialog.folder == ("drive-1", "Scheduling")
     assert dialog.use.isEnabled()
+
+
+def test_moving_a_card_rebuilds_two_slots_and_not_the_board(app, store):
+    """A drag must not cost a full redraw; that is a third of a second of nothing."""
+    board = BoardView()
+    board.show_week(store.week, {}, store.staff)
+    untouched = board.slots["O1", 4]
+    kept = board.cards["ccc333"]
+    board.refresh_slots(store.week.swap("M1", 0, 3), [("M1", 0), ("M1", 3)], {}, store.staff)
+    assert board.slots["O1", 4] is untouched  # never taken apart
+    assert board.cards["ccc333"] is kept
+    assert board.cards["aaa111"].column == 3
+
+
+def test_a_refreshed_slot_forgets_the_card_that_left_it(app, store):
+    board = BoardView()
+    board.show_week(store.week, {}, store.staff)
+    emptied = store.week.place("M1", 0, None)
+    board.refresh_slots(emptied, [("M1", 0)], {}, store.staff)
+    assert "aaa111" not in board.cards
+    assert board.slots["M1", 0].content is not None
+
+
+def test_a_change_of_shape_falls_back_to_the_whole_board(app, store):
+    from dataclasses import replace
+
+    board = BoardView()
+    board.show_week(store.week, {}, store.staff)
+    wider = replace(store.week, overflow_columns=store.week.overflow_columns + 1)
+    board.refresh_slots(wider, [("M1", 8)], {}, store.staff)
+    assert len(board.slots) == len(wider.cabins) * wider.columns
+
+
+def test_the_droppable_row_is_marked_and_the_rest_left_alone(app, store):
+    board = BoardView()
+    board.show_week(store.week, {}, store.staff)
+    board._offer_row("M1")
+    assert board.slots["M1", 0].property("available")
+    assert not board.slots["P1", 0].property("available")
+    board._clear_row()
+    assert not board.slots["M1", 0].property("available")
+
+
+def test_only_what_somebody_else_changed_is_redrawn(window, store):
+    from brainwaves.app.main import _difference
+
+    drawn = store.week
+    window._draw()
+    moved = drawn.swap("M1", 0, 3)
+    assert sorted(_difference(drawn, moved)) == [("M1", 0), ("M1", 3)]
+
+
+def test_a_new_cabin_means_the_whole_board(window, store):
+    from dataclasses import replace
+
+    from brainwaves.app.main import _difference
+    from brainwaves.model import Cabin
+
+    drawn = store.week
+    grown = replace(drawn, cabins=(*drawn.cabins, Cabin("C9", "Tester")))
+    assert _difference(drawn, grown) is None
+
+
+def test_a_changed_subtitle_means_the_whole_board(window, store):
+    from dataclasses import replace
+
+    from brainwaves.app.main import _difference
+
+    drawn = store.week
+    days = list(drawn.days)
+    days[3] = replace(days[3], subtitle="Pizza Day")
+    assert _difference(drawn, replace(drawn, days=tuple(days))) is None

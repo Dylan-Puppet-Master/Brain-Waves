@@ -49,7 +49,7 @@ class BoardView(QWidget):
         super().__init__()
         self.week: Week | None = None
         self.cards: dict[str, CardWidget] = {}
-        self.slots: list[SlotWidget] = []
+        self.slots: dict[tuple[str, int], SlotWidget] = {}
         self.selected: str | None = None
         self.clashing: tuple[str, ...] = ()
         self.staff = StaffLists()
@@ -99,8 +99,36 @@ class BoardView(QWidget):
         layout.addLayout(top)
         layout.addLayout(bottom, 1)
 
+    def refresh_slots(self, week: Week, slots, comment_counts, staff=None) -> None:
+        """Redraw only these slots, leaving the rest of the board alone.
+
+        Moving a card changes two slots. Rebuilding all hundred and sixty-eight to show
+        that takes a third of a second, which is exactly long enough to feel like the
+        program is thinking about it.
+        """
+        self.week = week
+        self.staff = staff or self.staff
+        wanted = [(cabin, column) for cabin, column in slots if (cabin, column) in self.slots]
+        if len(wanted) != len(list(slots)):
+            self.show_week(week, comment_counts, staff)  # the board's shape changed
+            return
+        self.cards = {
+            identifier: widget
+            for identifier, widget in self.cards.items()
+            if (widget.cabin, widget.column) not in wanted
+        }
+        for cabin, column in wanted:
+            card = week.card(cabin, column)
+            self.slots[cabin, column].show_card(
+                self._card(cabin, column, card, comment_counts)
+                if card
+                else self._empty(cabin, column)
+            )
+        self._show_clashing()
+        self.select(self.selected)
+
     def show_week(self, week: Week, comment_counts: dict[str, int], staff=None) -> None:
-        """Draw the week from scratch. Cheap enough that nothing here is incremental."""
+        """Draw the week from scratch. For a change of shape, not a change of content."""
         self.week = week
         self.staff = staff or self.staff
         self.cards.clear()
@@ -145,10 +173,16 @@ class BoardView(QWidget):
         self.side.verticalScrollBar().setValue(self.board.verticalScrollBar().value())
 
     def select(self, card_id: str | None) -> None:
-        """Ring one card and unring the rest."""
+        """Ring one card and unring whichever was ringed before.
+
+        Only those two are touched. Restyling every card on the board to change one ring
+        is most of a frame's work for nothing.
+        """
         self.selected = card_id if card_id in self.cards else None
-        for identifier, widget in self.cards.items():
-            widget.set_selected(identifier == self.selected)
+        for widget in self.cards.values():
+            wanted = widget.card.id == self.selected
+            if widget.property("selected") != wanted:
+                widget.set_selected(wanted)
 
     def _fill_header(self, week: Week) -> None:
         """Headings, as wide in total as the slots below them, so the two scroll together."""
@@ -219,14 +253,14 @@ class BoardView(QWidget):
                     else self._empty(cabin.name, column)
                 )
                 self.grid.addWidget(slot, row, column)
-                self.slots.append(slot)
+                self.slots[cabin.name, column] = slot
 
     def _card(self, cabin: str, column: int, card, counts: dict[str, int]) -> CardWidget:
         widget = CardWidget(cabin, column, card, counts.get(card.id, 0), self.staff)
         widget.picked.connect(self.card_picked)
         widget.edit_requested.connect(self.card_edit)
-        widget.drag_started.connect(self._lift)
-        widget.drag_ended.connect(self._settle)
+        widget.drag_started.connect(self._offer_row)
+        widget.drag_ended.connect(self._clear_row)
         self.cards[card.id] = widget
         return widget
 
@@ -235,13 +269,20 @@ class BoardView(QWidget):
         widget.clicked.connect(lambda: self.add_requested.emit(cabin, column))
         return widget
 
-    def _lift(self, cabin: str) -> None:
-        for slot in self.slots:
-            slot.set_muted(slot.cabin != cabin)
+    def _offer_row(self, cabin: str) -> None:
+        """Mark the row the card may be dropped into, which is the only one that may.
 
-    def _settle(self) -> None:
-        for slot in self.slots:
-            slot.set_muted(False)
+        Marking the eight slots that will take it is both clearer and eighty times less
+        work than fading the hundred and sixty that will not.
+        """
+        for (name, _), slot in self.slots.items():
+            if name == cabin:
+                slot.set_available(True)
+
+    def _clear_row(self) -> None:
+        for slot in self.slots.values():
+            if slot.property("available"):
+                slot.set_available(False)
 
 
 def _cabin_tile(cabin, first_of_village: bool) -> QWidget:

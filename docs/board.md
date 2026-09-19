@@ -11,8 +11,13 @@ columns for activities that have not been given a day.
 - **Drag** a card onto another slot in the same cabin's row. The two swap. Dropping onto an
   empty slot moves the card there.
 
-A card cannot be dragged into another cabin's row: while a card is in the air, every slot
-that will not take it fades. That is deliberate. A cabin's activities belong to that cabin.
+A card cannot be dragged into another cabin's row. While a card is in the air, that cabin's
+own row is tinted to show where it can go. That is deliberate: a cabin's activities belong
+to that cabin.
+
+Moving a card is instant. The board does not wait for Google — the card is where you put it
+straight away, the write is sent behind it, and the line at the top right says when it has
+landed.
 
 ## What a card shows
 

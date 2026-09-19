@@ -188,7 +188,10 @@ QFrame#slot[hover="true"] {{
     border: 1px dashed {ACCENT};
     background: {ACCENT_SOFT};
 }}
-QFrame#slot[muted="true"] {{ background: transparent; }}
+QFrame#slot[available="true"] {{
+    background: #eef4f3;
+    border: 1px dashed #b7d4d0;
+}}
 
 QFrame#card {{
     background: {SURFACE};
