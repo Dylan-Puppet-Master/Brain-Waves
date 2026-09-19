@@ -4,6 +4,7 @@ A week of cabin acts is a grid: one row per cabin, one column per weekday, plus 
 columns to the right holding acts that have not been given a day yet.
 """
 
+import re
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from enum import Enum
@@ -14,6 +15,9 @@ WEEKDAYS = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")
 EXTRA = "Extra"  # what the columns past Friday are called, wherever they are named
 DAY_COLUMNS = len(WEEKDAYS)
 MIN_OVERFLOW_COLUMNS = 3
+
+# A week code anywhere in a sheet name, so long as no letter or digit runs into it.
+WEEK_CODE = re.compile(r"(?<![a-z0-9])s(?P<session>\d+)w(?P<week>\d+)(?![a-z0-9])", re.IGNORECASE)
 
 
 class Village(Enum):
@@ -140,14 +144,14 @@ class WeekId:
 
     @classmethod
     def parse(cls, text: str) -> "WeekId | None":
-        """Read "S2W1" out of a spreadsheet title, or None if it holds no such code."""
-        code = text.strip().rsplit(" ", 1)[-1].upper()
-        if not code.startswith("S") or "W" not in code:
+        """Read "S2W1" out of a spreadsheet title, or None if it holds no such code.
+
+        The code can sit anywhere in the name, so "Acts S2W1 (draft)" counts too.
+        """
+        found = WEEK_CODE.search(text)
+        if found is None:
             return None
-        session, _, week = code[1:].partition("W")
-        if not (session.isdigit() and week.isdigit()):
-            return None
-        return cls(int(session), int(week))
+        return cls(int(found["session"]), int(found["week"]))
 
 
 @dataclass(frozen=True)

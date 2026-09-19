@@ -245,7 +245,8 @@ class MainWindow(QMainWindow):
         sheets = self.workspace.weeks(self.state.folder_id)
         if week_id not in sheets:
             return None
-        store = BoardStore(self.workspace, self.workspace.open(sheets[week_id].id, week_id))
+        sheet = self.workspace.open(sheets[week_id].id, week_id, report=self.jobs.progress.emit)
+        store = BoardStore(self.workspace, sheet)
         store.load_staff()
         store.reload_comments()
         return store

@@ -4,14 +4,14 @@ The rest of the program works in terms of `Week` and `Comment`; this is where th
 Drive and Sheets.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from brainwaves.config import Config
 from brainwaves.defaults import DEFAULT_CABINS, DEFAULT_LOCATIONS
 from brainwaves.google.comments import CommentStore
 from brainwaves.google.drive import Drive, DriveItem
 from brainwaves.model import Cabin, Week, WeekId, sort_cabins
-from brainwaves.sheets import style
+from brainwaves.sheets import layout, style
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.source import LoadError, SheetsWorkbook
 from brainwaves.sheets.staff import (
@@ -21,6 +21,9 @@ from brainwaves.sheets.staff import (
     parse_staff_names,
 )
 from brainwaves.sheets.support import render_support
+
+# The tabs that can be worked out again from the board, and so put back if they go missing.
+REBUILDABLE_TABS = (week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB, week_sheet.REQUESTS_TAB)
 
 
 class WeekExists(Exception):
@@ -56,15 +59,21 @@ class Workspace:
         """Which weeks already have a sheet in the folder."""
         return self.drive.week_sheets(folder_id)
 
-    def open(self, file_id: str, week_id: WeekId) -> WeekSheet:
-        """Read a week sheet into a Week."""
+    def open(self, file_id: str, week_id: WeekId, report=None) -> WeekSheet:
+        """Read a week sheet into a Week, rebuilding any tab it has lost."""
         workbook = SheetsWorkbook(self.client.open_by_key(file_id))
-        return self.read(workbook, week_id)
+        return self.read(workbook, week_id, report=report)
 
-    def read(self, workbook: SheetsWorkbook, week_id: WeekId) -> WeekSheet:
-        """Read the Board, Roster and Locations tabs of an open workbook."""
+    def read(self, workbook: SheetsWorkbook, week_id: WeekId, report=None) -> WeekSheet:
+        """Read the Board, Roster and Locations tabs of an open workbook.
+
+        A sheet missing anything but the board is rebuilt around what it does hold rather
+        than turned away; see `rebuild_tabs`.
+        """
         tabs = [week_sheet.BOARD_TAB, week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB]
-        self._check(workbook, tabs)
+        self._check(workbook, [week_sheet.BOARD_TAB])
+        if any(tab not in workbook.tabs() for tab in tabs):
+            return rebuild_tabs(workbook, week_id, report=report)
         tables = workbook.read_many(tabs)
         cabins = week_sheet.parse_roster(tables[week_sheet.ROSTER_TAB])
         week = week_sheet.parse_week(week_id, tables[week_sheet.BOARD_TAB], cabins)
@@ -177,6 +186,85 @@ def write_template(workbook: SheetsWorkbook, week: Week, locations, report=None)
             *style.support_requests(support, workbook.tab_id(week_sheet.REQUESTS_TAB)),
         ]
     )
+
+
+def rebuild_tabs(workbook, week_id: WeekId, report=None) -> WeekSheet:
+    """Put back the tabs a week sheet has lost, keeping everything it still holds.
+
+    The board is the only tab whose contents cannot be worked out again, so it is read and
+    checked first and never overwritten - unless its cabins are out of village order, in
+    which case the rows are laid out again, because from here on the roster's order is what
+    says which row belongs to which cabin.
+
+    A tab that is still there is left exactly as it is; only the missing ones are written.
+    """
+    say = report or (lambda _message: None)
+    say("Checking the board")
+    board = workbook.read(week_sheet.BOARD_TAB)
+    week_sheet.check_board(board)
+
+    tabs = workbook.tabs()
+    if week_sheet.ROSTER_TAB in tabs:
+        cabins = week_sheet.parse_roster(workbook.read(week_sheet.ROSTER_TAB))
+    else:
+        cabins = week_sheet.parse_board_cabins(board)
+    week = week_sheet.parse_week(week_id, board, cabins)
+
+    if week_sheet.LOCATIONS_TAB in tabs:
+        locations = week_sheet.parse_locations(workbook.read(week_sheet.LOCATIONS_TAB))
+    else:
+        locations = ()
+    locations = locations or DEFAULT_LOCATIONS
+
+    ordered = sort_cabins(week.cabins)
+    week = replace(week, cabins=ordered)
+
+    missing = [tab for tab in REBUILDABLE_TABS if tab not in tabs]
+    say(f"Adding the {', '.join(missing)} tab" + ("s" if len(missing) > 1 else ""))
+    support = render_support(week)
+    contents = {
+        week_sheet.ROSTER_TAB: week_sheet.render_roster(week.cabins),
+        week_sheet.LOCATIONS_TAB: week_sheet.render_locations(locations),
+        week_sheet.REQUESTS_TAB: support.table,
+    }
+    for tab in missing:
+        workbook.clear(tab)
+        workbook.write(tab, contents[tab])
+
+    if ordered != cabins:
+        say("Putting the cabins in village order")
+        rows, columns = layout.grid_size(len(week.cabins), week.columns)
+        workbook.write(week_sheet.BOARD_TAB, week_sheet.render_week(week))
+        workbook.clear_beyond(week_sheet.BOARD_TAB, rows, columns)
+
+    say("Formatting the board")
+    workbook.apply(
+        style.board_requests(
+            week,
+            workbook.tab_id(week_sheet.BOARD_TAB),
+            week_sheet.LOCATIONS_TAB,
+            # A sheet that has lost a tab was rarely written by Brain Waves, so it is
+            # taken to want the risk colours as well.
+            new_sheet=True,
+            size=workbook.size(week_sheet.BOARD_TAB),
+        ),
+        report=say,
+    )
+
+    say("Formatting the other tabs")
+    formats = {
+        week_sheet.ROSTER_TAB: lambda: style.list_tab_requests(
+            workbook.tab_id(week_sheet.ROSTER_TAB), 3, widths=(90, 170, 170)
+        ),
+        week_sheet.LOCATIONS_TAB: lambda: style.list_tab_requests(
+            workbook.tab_id(week_sheet.LOCATIONS_TAB), 1, widths=(260,)
+        ),
+        week_sheet.REQUESTS_TAB: lambda: style.support_requests(
+            support, workbook.tab_id(week_sheet.REQUESTS_TAB)
+        ),
+    }
+    workbook.apply([request for tab in missing for request in formats[tab]()])
+    return WeekSheet(workbook, week, tuple(locations))
 
 
 def _default_cabins() -> tuple[Cabin, ...]:

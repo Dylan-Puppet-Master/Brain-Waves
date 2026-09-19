@@ -35,6 +35,24 @@ def test_week_id_round_trips_through_a_title():
     assert WeekId.parse("Some other sheet") is None
 
 
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        ("S2W1", WeekId(2, 1)),
+        ("Cabin Act Sorting - S2W1", WeekId(2, 1)),
+        ("S2W1 acts (draft)", WeekId(2, 1)),
+        ("Copy of s2w1 - FINAL", WeekId(2, 1)),
+        ("2026 S10W12 schedule", WeekId(10, 12)),
+        ("Staff list", None),
+        ("Bus S2W1A", None),
+        ("SW1", None),
+        ("S2W", None),
+    ],
+)
+def test_week_id_is_found_anywhere_in_a_sheet_name(name, expected):
+    assert WeekId.parse(name) == expected
+
+
 def test_swap_exchanges_two_slots(week):
     swapped = week.swap("M1", 0, 3)
     assert swapped.card("M1", 0).title == "Tie dye"

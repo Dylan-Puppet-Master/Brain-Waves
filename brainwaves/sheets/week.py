@@ -169,6 +169,49 @@ def parse_roster(table: Table) -> tuple[Cabin, ...]:
     return sort_cabins(cabins)
 
 
+def parse_board_cabins(board: Table) -> tuple[Cabin, ...]:
+    """The cabins the Board tab itself names, in the order its rows put them.
+
+    Used when the Roster tab has gone missing: the board's own cabin column still says who
+    is on it. The order is the board's, not village order, because it is the row a cabin
+    sits on that says which cards are its own.
+    """
+    cabins = []
+    index = 0
+    while layout.cabin_row(index) < len(board):
+        label = cell(board, layout.cabin_row(index), layout.CABIN_COLUMN)
+        index += 1
+        if not label:
+            continue
+        name, _, who = label.partition("\n")
+        counselor, _, co_counselor = who.partition("&")
+        cabins.append(Cabin(name.strip(), counselor.strip(), co_counselor.strip()))
+    return tuple(cabins)
+
+
+def check_board(board: Table) -> None:
+    """Raise LoadError unless the Board tab is laid out the way this program reads it.
+
+    Worth doing before rebuilding the tabs around a board nobody here wrote: if the labels
+    are not where they belong, every card would be read out of the wrong cells, and the
+    rebuilt sheet would make that permanent.
+    """
+    if not parse_board_cabins(board):
+        raise LoadError(
+            f"{BOARD_TAB}: no cabins. Column A should hold a cabin name at row "
+            f"{layout.cabin_row(0) + 1}, and every {layout.CARD_ROWS} rows after that."
+        )
+    for index, expected in enumerate(layout.FIELD_LABELS):
+        row = layout.cabin_row(0) + index
+        found = cell(board, row, layout.FIRST_CARD_COLUMN + layout.LABEL_OFFSET)
+        if found.casefold() != expected.casefold():
+            where = index_to_a1(row, layout.FIRST_CARD_COLUMN + layout.LABEL_OFFSET)
+            raise LoadError(
+                f"{BOARD_TAB}!{where} reads '{found}', where a card's "
+                f"{expected} row belongs. The board is not laid out as Brain Waves writes it."
+            )
+
+
 def render_roster(cabins) -> Table:
     """The Roster tab."""
     return [ROSTER_HEADER] + [[c.name, c.counselor, c.co_counselor] for c in cabins]

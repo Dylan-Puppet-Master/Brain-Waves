@@ -3,9 +3,10 @@
 One Google spreadsheet holds one week, named `Cabin Act Sorting - S2W1`. All of them live
 in one Drive folder, which is what **Link to Google Sheets** picks. That folder can be
 anywhere you can reach: your own Drive, a shared drive your team has, or a folder somebody
-has shared with you. A camp folder is usually not in anybody's own Drive. A spreadsheet whose name
-does not end in a session and week code is ignored, so notes and old copies can sit in the
-same folder.
+has shared with you. A camp folder is usually not in anybody's own Drive. The code is what
+matters, not the rest of the name: `S4W1 acts (draft)` and `Copy of Cabin Act Sorting -
+S4W1` are both read as session 4, week 1. A spreadsheet whose name holds no session and
+week code at all is ignored, so notes and old copies can sit in the same folder.
 
 Each week's spreadsheet has four tabs.
 
@@ -84,3 +85,17 @@ brainwaves template --folder <drive folder id> --session 2 --week 1
 
 A new week keeps the cabins and locations of the newest week already open, so a session
 does not have to be typed in twice.
+
+## A sheet that has lost a tab
+
+Opening a week whose Roster, Locations or Support Requests tab is gone rebuilds it instead
+of refusing the sheet. Only the board cannot be worked out again, so it is read first and
+checked: column A must name the cabins, and a card's rows must carry the labels Brain Waves
+writes. If they do not, nothing is written and the message says which cell is wrong, because
+a board laid out some other way would be read into the wrong cells.
+
+If the board passes, the missing tabs are written from it - the cabins and who leads them
+come from column A, the support requests from the cards, and the locations from the standard
+list - and the Board is formatted again. A tab that is still there is left exactly as it is.
+Cabins found out of village order are laid out again in it, since from then on the Roster's
+order is what says which row belongs to which cabin.
