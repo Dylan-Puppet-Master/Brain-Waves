@@ -86,6 +86,10 @@ git tag v0.2.0 && git push --tags
 `.github/workflows/release.yml` runs `tools/build_settings.py` to put camp's Google client
 and Skills doc into `brainwaves/built_in.py` from the repository's secrets, then builds the
 one-file executable on Windows, macOS and Linux and attaches all three to a GitHub release.
+`tools/build_icon.py` turns `icon.png` into each platform's icon first, and on Linux
+`tools/build_linux_release.py` packs the executable, the icon and an `install.sh` that
+writes a desktop entry into `brainwaves-linux.tar.gz`; `brainwaves.update` unpacks that
+archive and installs the executable inside it.
 That is what makes the download work with no config file; a source checkout leaves
 `built_in.py` blank and reads a config file as before, and a test checks that camp's real
 credentials never get committed. `brainwaves.update` finds the asset whose name

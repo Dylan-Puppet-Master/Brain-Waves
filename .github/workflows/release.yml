@@ -20,14 +20,28 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
+      - run: pip install Pillow
       - name: Build in camp's settings, so the download needs no config file
         env:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           SKILLS_SHEET: ${{ secrets.SKILLS_SHEET }}
         run: python tools/build_settings.py
+      - name: Build platform icon
+        run: python tools/build_icon.py
       - run: pyinstaller brainwaves.spec
-      - uses: actions/upload-artifact@v4
+      - name: Package Linux release
+        if: matrix.os == 'ubuntu-latest'
+        run: python tools/build_linux_release.py
+      - name: Upload Linux release
+        if: matrix.os == 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: brainwaves-${{ matrix.os }}
+          path: dist/brainwaves-linux.tar.gz
+      - name: Upload Windows/macOS release
+        if: matrix.os != 'ubuntu-latest'
+        uses: actions/upload-artifact@v4
         with:
           name: brainwaves-${{ matrix.os }}
           path: dist/brainwaves-*

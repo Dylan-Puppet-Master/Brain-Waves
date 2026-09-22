@@ -7,8 +7,10 @@ name mentions the platform it is running on.
 """
 
 import sys
+from pathlib import Path
 
 PLATFORM = {"win32": "windows", "darwin": "macos"}.get(sys.platform, "linux")
+ICON = {"win32": Path("build/icon.ico"), "darwin": Path("build/icon.icns")}.get(sys.platform)
 
 analysis = Analysis(  # noqa: F821 - PyInstaller injects these names
     ["brainwaves/__main__.py"],
@@ -28,4 +30,5 @@ executable = EXE(  # noqa: F821
     console=False,
     onefile=True,
     upx=False,
+    icon=str(ICON) if ICON else None,
 )

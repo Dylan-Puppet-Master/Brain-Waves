@@ -4,9 +4,11 @@
 
 1. Download the file for your computer from the
    [releases page](https://github.com/camp-augusta/brainwaves/releases):
-   `brainwaves-windows.exe`, `brainwaves-macos` or `brainwaves-linux`.
-2. Put it somewhere you will find it again, and open it. On macOS and Linux you may have
-   to mark it runnable first (`chmod +x brainwaves-macos`).
+   `brainwaves-windows.exe`, `brainwaves-macos` or `brainwaves-linux.tar.gz`.
+2. Put it somewhere you will find it again, and open it. On macOS you may have to mark it
+   runnable first (`chmod +x brainwaves-macos`). On Linux, unpack the archive where you
+   want it to live and run the `install.sh` inside it once: that adds Brain Waves, with its
+   icon, to your applications menu.
 3. Press **Sign in with Google** and sign in with the account that can open the cabin act
    sheets.
 4. Press **Link to Google Sheets** and walk down to the folder that holds the
