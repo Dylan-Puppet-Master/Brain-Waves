@@ -68,6 +68,9 @@ class BoardView(QWidget):
         self.grid = QGridLayout(self.grid_body)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(0)
+        # Slots are a fixed size, so a board wider or taller than the week keeps the week
+        # packed into its corner rather than spreading the spare room out between columns.
+        self.grid.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.board.setWidget(self.grid_body)
 
         # The strips label the board, so they may only ever be where the board is. Scrolling
@@ -347,6 +350,7 @@ def _strip(orientation) -> tuple[Strip, QWidget]:
     layout = QHBoxLayout(body) if orientation == Qt.Horizontal else QVBoxLayout(body)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(0)
+    layout.setAlignment(Qt.AlignLeft if orientation == Qt.Horizontal else Qt.AlignTop)
     area.setWidget(body)
     return area, body
 
