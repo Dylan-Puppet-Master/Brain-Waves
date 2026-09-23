@@ -4,7 +4,6 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainwaves"
-version = "0.1.0"
 description = "Cabin activity scheduling for Camp Augusta"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -16,6 +15,9 @@ dependencies = [
     "platformdirs>=4.2",
     "requests>=2.31",
 ]
+
+[tool.setuptools.dynamic]
+version = {attr = "brainwaves.__version__"}
 
 [project.optional-dependencies]
 dev = ["pytest>=8", "ruff>=0.5", "mkdocs-material>=9.5", "pyinstaller>=6.6"]
