@@ -5,7 +5,7 @@ board's own, so the week reads the same at column eight as it does at column one
 """
 
 from PySide6.QtCore import Qt, Signal
-from PySide6.QtGui import QColor, QPainter
+from PySide6.QtGui import QColor, QCursor, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -60,6 +60,8 @@ class BoardView(QWidget):
         self.staff = StaffLists()
         # Each cabin's row on the board, for shading the row under the cursor.
         self.rows: dict[str, int] = {}
+        # Whether a card is in the air, when only its row is shaded.
+        self.dragging = False
         self.setObjectName("boardView")
         self.setAttribute(Qt.WA_StyledBackground, True)
         self._build()
@@ -166,12 +168,18 @@ class BoardView(QWidget):
         self.side_body.shade(row, None)
 
     def leaveEvent(self, event) -> None:  # noqa: N802 - Qt's name
-        """The cursor has left the board: nothing is being read across or down."""
+        """The cursor has left the board: nothing is being read across or down.
+
+        Picking a card up sends one of these too, as the drag takes the pointer, but the
+        card's row stays shaded until it is put down.
+        """
         super().leaveEvent(event)
-        self.cross(None, None)
+        if not self.dragging:
+            self.cross(None, None)
 
     def _hovered(self, cabin: str, column: int) -> None:
-        self.cross(self.rows.get(cabin), column)
+        if not self.dragging:
+            self.cross(self.rows.get(cabin), column)
 
     def show_clash(self, card_ids) -> None:
         """Ring these cards in red until something else is chosen.
@@ -277,6 +285,8 @@ class BoardView(QWidget):
         for row, cabin in enumerate(week.cabins):
             for column in range(week.columns):
                 slot = SlotWidget(cabin.name, column)
+                # Finished with the drag before the swap redraws the card that began it.
+                slot.dropped.connect(self._drag_over)
                 slot.dropped.connect(self.swap_requested)
                 slot.hovered.connect(self._hovered)
                 card = week.card(cabin.name, column)
@@ -293,7 +303,7 @@ class BoardView(QWidget):
         widget.picked.connect(self.card_picked)
         widget.edit_requested.connect(self.card_edit)
         widget.drag_started.connect(self._offer_row)
-        widget.drag_ended.connect(self._clear_row)
+        widget.drag_ended.connect(self._drag_over)
         self.cards[card.id] = widget
         return widget
 
@@ -303,19 +313,29 @@ class BoardView(QWidget):
         return widget
 
     def _offer_row(self, cabin: str) -> None:
-        """Mark the row the card may be dropped into, which is the only one that may.
+        """Shade the row the card may be dropped into, which is the only one that may.
 
-        Marking the eight slots that will take it is both clearer and eighty times less
-        work than fading the hundred and sixty that will not.
+        It is the same band the cursor draws, held for the length of the drag, and without
+        the column, to say the card moves only across.
         """
-        for (name, _), slot in self.slots.items():
-            if name == cabin:
-                slot.set_available(True)
+        self.dragging = True
+        self.cross(self.rows.get(cabin), None)
 
-    def _clear_row(self) -> None:
-        for slot in self.slots.values():
-            if slot.property("available"):
-                slot.set_available(False)
+    def _drag_over(self) -> None:
+        """The card is down. The board says so itself, not the card, which a drop replaces."""
+        if self.dragging:
+            self.dragging = False
+            self._cross_under_cursor()
+
+    def _cross_under_cursor(self) -> None:
+        """Shade wherever the card was put down, or nothing if it was put down elsewhere."""
+        widget = QApplication.widgetAt(QCursor.pos())
+        while widget is not None and not isinstance(widget, SlotWidget):
+            widget = widget.parentWidget()
+        if widget is not None and self.slots.get((widget.cabin, widget.column)) is widget:
+            self.cross(self.rows.get(widget.cabin), widget.column)
+        else:
+            self.cross(None, None)
 
 
 def _cabin_tile(cabin, first_of_village: bool) -> QWidget:

@@ -258,3 +258,40 @@ def test_three_cabins_reads_as_three_cabins(week):
         },
     )
     assert find_conflicts(week, CAMP)[0].summary == "Monday: M1, P1 and O1 all want Dylan"
+
+
+def test_rest_hour_acts_do_not_clash_with_the_cabin_act_hour(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", title="RH Swim", location="Lake", heroes=("Dylan",)),
+            ("P1", 1): CabinAct(id="two", title="Canoes", location="Lake", heroes=("Dylan",)),
+        },
+    )
+    assert find_conflicts(week) == []
+
+
+def test_rest_hour_acts_clash_with_each_other(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", title="RH Swim", location="Lake"),
+            ("P1", 1): CabinAct(id="two", title="RH: Float", location="Lake"),
+            ("O1", 1): CabinAct(id="three", title="Canoes", location="Lake"),
+        },
+    )
+    (clash,) = find_conflicts(week)
+    assert set(clash.cards) == {"one", "two"}
+    assert clash.rest_hour
+    assert clash.summary.startswith("Tuesday rest hour:")
+
+
+def test_a_title_merely_starting_with_rh_is_not_rest_hour(week):
+    week = place(
+        week,
+        {
+            ("M1", 1): CabinAct(id="one", title="Rhythm", location="Lodge"),
+            ("P1", 1): CabinAct(id="two", title="RHYTHM", location="Lodge"),
+        },
+    )
+    assert len(find_conflicts(week)) == 1

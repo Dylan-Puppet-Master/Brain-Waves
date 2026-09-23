@@ -4,6 +4,7 @@ A card is dragged onto another slot in the same cabin row and the two exchange p
 which is the move the old spreadsheet took six steps to make.
 """
 
+import shiboken6
 from PySide6.QtCore import QMimeData, QPoint, Qt, Signal
 from PySide6.QtGui import QDrag
 from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
@@ -123,6 +124,8 @@ class CardWidget(QFrame):
         restyle(self)
         self.drag_started.emit(self.cabin)
         drag.exec(Qt.MoveAction)
+        if not shiboken6.isValid(self):
+            return  # dropped, and redrawn as a new card in the meantime
         self.setProperty("lifted", False)
         restyle(self)
         self.drag_ended.emit()
@@ -203,11 +206,6 @@ class SlotWidget(QFrame):
             return
         event.acceptProposedAction()
         self.dropped.emit(self.cabin, source[1], self.column)
-
-    def set_available(self, available: bool) -> None:
-        """Show that a card in the air may be dropped here."""
-        self.setProperty("available", available)
-        restyle(self)
 
     def _highlight(self, on: bool) -> None:
         self.setProperty("hover", on)

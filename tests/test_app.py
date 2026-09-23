@@ -676,14 +676,18 @@ def test_a_change_of_shape_falls_back_to_the_whole_board(app, store):
     assert len(board.slots) == len(wider.cabins) * wider.columns
 
 
-def test_the_droppable_row_is_marked_and_the_rest_left_alone(app, store):
+def test_a_drop_ends_the_drag_even_though_it_replaces_the_card(app, store):
     board = BoardView()
     board.show_week(store.week, {}, store.staff)
+    board.swap_requested.connect(
+        lambda cabin, one, other: board.refresh_slots(
+            store.week.swap(cabin, one, other), [(cabin, one), (cabin, other)], {}
+        )
+    )
     board._offer_row("M1")
-    assert board.slots["M1", 0].property("available")
-    assert not board.slots["P1", 0].property("available")
-    board._clear_row()
-    assert not board.slots["M1", 0].property("available")
+    board.slots["M1", 3].dropped.emit("M1", 0, 3)
+    assert not board.dragging
+    assert board.grid_body.row is None  # the offscreen cursor is over no slot
 
 
 def test_only_what_somebody_else_changed_is_redrawn(window, store):
@@ -725,6 +729,34 @@ def test_the_cursor_shades_its_row_and_column_through_the_headings(app, store):
     assert (board.grid_body.row, board.grid_body.column) == (row, 2)
     assert (board.header_body.row, board.header_body.column) == (None, 2)
     assert (board.side_body.row, board.side_body.column) == (row, None)
+
+
+def test_a_card_in_the_air_shades_only_its_row(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.slots["O1", 2].hovered.emit("O1", 2)
+    board._offer_row("O1")
+    row = [c.name for c in store.week.cabins].index("O1")
+    assert (board.grid_body.row, board.grid_body.column) == (row, None)
+    assert board.header_body.column is None
+    board.slots["O1", 4].hovered.emit("O1", 4)
+    assert board.grid_body.column is None
+    board._drag_over()
+    board.slots["O1", 4].hovered.emit("O1", 4)
+    assert (board.grid_body.row, board.grid_body.column) == (row, 4)
+
+
+def test_picking_a_card_up_keeps_its_row_shaded(app, store):
+    from PySide6.QtCore import QEvent
+
+    board = BoardView()
+    board.show_week(store.week, {})
+    board._offer_row("O1")
+    row = [c.name for c in store.week.cabins].index("O1")
+    board.leaveEvent(QEvent(QEvent.Leave))  # what the drag taking the pointer sends
+    assert (board.grid_body.row, board.side_body.row) == (row, row)
+    board._drag_over()
+    assert board.grid_body.row is None  # put down away from the board
 
 
 def test_leaving_the_board_clears_the_shading(app, store):

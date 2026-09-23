@@ -67,7 +67,7 @@ class ConflictPanel(QWidget):
         self.table.setRowCount(len(self.conflicts))
         for row, conflict in enumerate(self.conflicts):
             for column, text in enumerate(
-                (conflict.day, f"{conflict.kind}: {conflict.what}", ", ".join(conflict.cabins))
+                (conflict.when, f"{conflict.kind}: {conflict.what}", ", ".join(conflict.cabins))
             ):
                 item = QTableWidgetItem(text)
                 item.setToolTip(conflict.summary)
@@ -82,14 +82,14 @@ class ConflictPanel(QWidget):
         if not rows or not self.conflicts:
             return None
         conflict = self.conflicts[min(rows)]
-        return (conflict.kind, conflict.what, conflict.column)
+        return _key(conflict)
 
     def _choose(self, key: tuple | None) -> None:
         if key is None:
             self.picked.emit(())
             return
         for row, conflict in enumerate(self.conflicts):
-            if (conflict.kind, conflict.what, conflict.column) == key:
+            if _key(conflict) == key:
                 self.table.selectRow(row)
                 return
         self.picked.emit(())  # the clash was settled while it was being looked at
@@ -100,6 +100,10 @@ class ConflictPanel(QWidget):
             self.picked.emit(())
             return
         self.picked.emit(self.conflicts[min(rows)].cards)
+
+
+def _key(conflict) -> tuple:
+    return (conflict.kind, conflict.what, conflict.column, conflict.rest_hour)
 
 
 def _counted(conflicts) -> str:
