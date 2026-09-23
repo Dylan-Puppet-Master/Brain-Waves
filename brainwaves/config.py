@@ -29,7 +29,7 @@ DEFAULT_SKILLS_TAB = "Skills"
 DEFAULT_CATEGORIES_TAB = "Categories"
 DEFAULT_POLL_SECONDS = 3
 DEFAULT_COMMENT_POLL_SECONDS = 10
-DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
+DEFAULT_RELEASES = "https://api.github.com/repos/Dylan-Puppet-Master/Brain-Waves/releases/latest"
 
 
 @dataclass(frozen=True)
