@@ -715,3 +715,23 @@ def test_a_changed_subtitle_means_the_whole_board(window, store):
     days = list(drawn.days)
     days[3] = replace(days[3], subtitle="Pizza Day")
     assert _difference(drawn, replace(drawn, days=tuple(days))) is None
+
+
+def test_the_cursor_shades_its_row_and_column_through_the_headings(app, store):
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.slots["O1", 2].hovered.emit("O1", 2)
+    row = [c.name for c in store.week.cabins].index("O1")
+    assert (board.grid_body.row, board.grid_body.column) == (row, 2)
+    assert (board.header_body.row, board.header_body.column) == (None, 2)
+    assert (board.side_body.row, board.side_body.column) == (row, None)
+
+
+def test_leaving_the_board_clears_the_shading(app, store):
+    from PySide6.QtCore import QEvent
+
+    board = BoardView()
+    board.show_week(store.week, {})
+    board.cross(1, 1)
+    board.leaveEvent(QEvent(QEvent.Leave))
+    assert (board.grid_body.row, board.grid_body.column) == (None, None)

@@ -156,6 +156,7 @@ class SlotWidget(QFrame):
 
     dropped = Signal(str, int, int)
     add_requested = Signal(str, int)
+    hovered = Signal(str, int)
 
     def __init__(self, cabin: str, column: int) -> None:
         super().__init__()
@@ -175,6 +176,11 @@ class SlotWidget(QFrame):
             self.content.deleteLater()
         self.content = widget
         self._layout.addWidget(widget)
+
+    def enterEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """Say the cursor is over this cabin and day, for the board to shade them."""
+        super().enterEvent(event)
+        self.hovered.emit(self.cabin, self.column)
 
     def dragEnterEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """Take a card from this cabin's own row, and say so."""

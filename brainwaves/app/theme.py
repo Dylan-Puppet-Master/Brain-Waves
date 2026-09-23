@@ -32,6 +32,12 @@ CABIN_WIDTH = 150
 WARN_BG = "#fdf0dc"
 WARN_INK = "#8a5200"
 
+# The board is laid on a warm off-white, easier on the eye over an afternoon than the cool
+# grey of the window around it. The row and column under the cursor are shaded a little
+# deeper, so a card can be read across to its cabin and up to its day.
+BOARD_BG = "#F5F5F5"
+BOARD_CROSS = "#D1D1D1"
+
 STYLESHEET = f"""
 QWidget {{
     color: {INK};
@@ -107,6 +113,7 @@ QComboBox QAbstractItemView {{
 QCheckBox {{ spacing: 7px; }}
 
 QScrollArea {{ border: none; background: {SUNKEN}; }}
+QWidget#boardView, QWidget#boardView QScrollArea {{ background: {BOARD_BG}; }}
 QScrollBar:vertical, QScrollBar:horizontal {{ background: transparent; margin: 0; }}
 QScrollBar:vertical {{ width: 11px; }}
 QScrollBar:horizontal {{ height: 11px; }}

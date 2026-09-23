@@ -5,6 +5,7 @@ board's own, so the week reads the same at column eight as it does at column one
 """
 
 from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QColor, QPainter
 from PySide6.QtWidgets import (
     QApplication,
     QFrame,
@@ -20,6 +21,8 @@ from PySide6.QtWidgets import (
 
 from brainwaves.app.card import AddCard, CardWidget, SlotWidget
 from brainwaves.app.theme import (
+    BOARD_BG,
+    BOARD_CROSS,
     CABIN_WIDTH,
     CARD_HEIGHT,
     CARD_WIDTH,
@@ -55,6 +58,10 @@ class BoardView(QWidget):
         self.selected: str | None = None
         self.clashing: tuple[str, ...] = ()
         self.staff = StaffLists()
+        # Each cabin's row on the board, for shading the row under the cursor.
+        self.rows: dict[str, int] = {}
+        self.setObjectName("boardView")
+        self.setAttribute(Qt.WA_StyledBackground, True)
         self._build()
 
     def _build(self) -> None:
@@ -66,7 +73,7 @@ class BoardView(QWidget):
         self.side.setFixedWidth(CABIN_WIDTH)
         self.board = QScrollArea()
         self.board.setWidgetResizable(True)
-        self.grid_body = QWidget()
+        self.grid_body = Ground()
         self.grid = QGridLayout(self.grid_body)
         self.grid.setContentsMargins(0, 0, 0, 0)
         self.grid.setSpacing(0)
@@ -146,8 +153,25 @@ class BoardView(QWidget):
         self._fill_header(week)
         self._fill_side(week)
         self._fill_grid(week, comment_counts)
+        self.grid_body.width_in_slots = week.columns
+        self.grid_body.height_in_slots = len(week.cabins)
+        self.cross(None, None)
         self.select(self.selected)
         self._show_clashing()
+
+    def cross(self, row: int | None, column: int | None) -> None:
+        """Shade one row and one column of the board, headings included; None for neither."""
+        self.grid_body.shade(row, column)
+        self.header_body.shade(None, column)
+        self.side_body.shade(row, None)
+
+    def leaveEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """The cursor has left the board: nothing is being read across or down."""
+        super().leaveEvent(event)
+        self.cross(None, None)
+
+    def _hovered(self, cabin: str, column: int) -> None:
+        self.cross(self.rows.get(cabin), column)
 
     def show_clash(self, card_ids) -> None:
         """Ring these cards in red until something else is chosen.
@@ -249,10 +273,12 @@ class BoardView(QWidget):
         layout.addStretch(1)
 
     def _fill_grid(self, week: Week, comment_counts: dict[str, int]) -> None:
+        self.rows = {cabin.name: row for row, cabin in enumerate(week.cabins)}
         for row, cabin in enumerate(week.cabins):
             for column in range(week.columns):
                 slot = SlotWidget(cabin.name, column)
                 slot.dropped.connect(self.swap_requested)
+                slot.hovered.connect(self._hovered)
                 card = week.card(cabin.name, column)
                 slot.show_card(
                     self._card(cabin.name, column, card, comment_counts)
@@ -348,9 +374,47 @@ class Strip(QScrollArea):
         event.ignore()
 
 
-def _strip(orientation) -> tuple[Strip, QWidget]:
+class Ground(QWidget):
+    """What the board, or one of its heading strips, is drawn on.
+
+    It paints the warm background itself, and the row and column under the cursor a shade
+    deeper behind the slots. Painting a band is one repaint, where marking the slots it
+    covers would restyle thirty widgets every time the cursor crossed into another.
+
+    Rows and columns are the slots' own size and start at the top left, as every layout on
+    the board is packed. `width_in_slots` and `height_in_slots` stop the bands at the edge
+    of the week; left at zero, a band runs the whole way across or down.
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.row: int | None = None
+        self.column: int | None = None
+        self.width_in_slots = 0
+        self.height_in_slots = 0
+
+    def shade(self, row: int | None, column: int | None) -> None:
+        """Shade this row and this column; None for neither."""
+        if (row, column) != (self.row, self.column):
+            self.row, self.column = row, column
+            self.update()
+
+    def paintEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """The background, then the bands."""
+        painter = QPainter(self)
+        painter.fillRect(self.rect(), QColor(BOARD_BG))
+        band = QColor(BOARD_CROSS)
+        if self.row is not None:
+            width = self.width_in_slots * SLOT_WIDTH or self.width()
+            painter.fillRect(0, self.row * SLOT_HEIGHT, width, SLOT_HEIGHT, band)
+        if self.column is not None:
+            height = self.height_in_slots * SLOT_HEIGHT or self.height()
+            painter.fillRect(self.column * SLOT_WIDTH, 0, SLOT_WIDTH, height, band)
+
+
+def _strip(orientation) -> tuple[Strip, Ground]:
     area = Strip()
-    body = QWidget()
+    body = Ground()
     layout = QHBoxLayout(body) if orientation == Qt.Horizontal else QVBoxLayout(body)
     layout.setContentsMargins(0, 0, 0, 0)
     layout.setSpacing(0)
