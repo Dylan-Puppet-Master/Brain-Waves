@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "brainwaves"
+dynamic = ["version"]
 description = "Cabin activity scheduling for Camp Augusta"
 readme = "README.md"
 requires-python = ">=3.12"
