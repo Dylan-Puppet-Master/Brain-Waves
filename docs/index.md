@@ -1,25 +1,17 @@
 # Brain Waves
 
-Brain Waves is how Camp Augusta plans cabin activities. Village leaders write each cabin's
-ideas onto cards, the VL Brain drags those cards onto the days they will run, and everybody
-argues about them in the comments. Google Sheets stays the source of truth, so nothing is
-locked inside the program.
+Brain Waves is a software tool to help Village Leaders plan Cabin Activities. It is essentially an alternate frontend to Google Sheets with various quality-of-life improvements added in. Village Leaders are free to continue using Google Sheets if they want -- all the information (including comments) will update in almost-real-time within Brain Waves.
+
+The creation of Brain Waves was motivated by a wish and a wonder.
+
+**The wish** for the ability to simply drag, drop, and swap cabin acts across the week. The current system of sorting cabin acts is, in my opinion, unnecessarilly tedious and not what Google Sheets was designed for.
+
+**The wonder** of how possible it would be to consolidate all staff scheduling -- including HERO scheduling -- under one Puppet Master system. With progress being made towards automating the staff schedule (see [Puppet Strings](https://github.com/Dylan-Puppet-Master/Puppet-Strings)), it would be extremely convenient for cabin activity staffing requests to be in a standardized format.
+
+**Surprise!** Brain Waves solves both of these problems and then some, with the only techincal drawback being slightly higher latencies in real-time collaboration. 
 
 ![The board](img/app.png)
 
-## The week
-
-1. Open Brain Waves. It reopens the session and week you had last.
-2. Each village leader clicks an empty slot and fills in the cabin's activity: title,
-   description, materials, location, notes, risk, what it needs, and which HEROES.
-3. The VL Brain drags cards along a cabin's row until each day looks right. Anything that
-   has not found a day sits in the **Extra** columns on the right.
-4. The **Clashes** pane says whether two cabins have asked for the same place or the same
-   HERO on the same day. Choose a row and the cards blink.
-5. Anyone with a question clicks the card and writes a comment. The thread appears in the
-   Google Sheets comment sidebar too, so people who prefer the sheet can answer there.
-6. The **Support Requests** tab of the sheet rewrites itself as the board changes. That is
-   the tab the Puppet Master reads to know what each day asks of non-counselor staff.
 
 ## Where things live
 
