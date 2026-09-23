@@ -39,9 +39,7 @@ def app():
 @pytest.fixture
 def store(tmp_path, week):
     workspace, sheet = build(tmp_path, week)
-    made = BoardStore(workspace, sheet)
-    made.load_staff()
-    return made
+    return BoardStore(workspace, sheet)
 
 
 def test_the_board_shows_a_card_for_every_slot_that_has_one(app, store):

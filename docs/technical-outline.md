@@ -92,8 +92,19 @@ adopt a revision that already contained somebody's unread edit, marking it seen 
 it for good. Sixty kilobytes every three seconds is cheap enough; a change signal that
 sometimes never arrives is not cheap at all.
 
-What is still worth splitting is *what* gets read. The board is read every few seconds; the
-roster, the locations and the comments every ten, because they change once a session.
+What is worth keeping down is the *number* of requests, which is what Google's quota
+counts and what each costs a fraction of a second. A poll reads the board, the roster, the
+locations and the Support Requests tab in one request - the last three are small, and
+asking for them separately was a second request for the same news. The comments come from
+Drive, on their own ten-second beat. While the window is in the background the board is
+read one tick in four, and read at once when it comes back to the front.
+
+Writes are gathered the same way. A card write sends what the card holds when it runs, so
+every card changed while the last request was in flight goes in the next one together, and
+the Support Requests tab goes in that same request, only when what it says has changed.
+Its formatting is sent again only when its day blocks move. The board's formatting is one
+card block's worth of cells pasted over every other card, which keeps a week's formatting
+to one request of a few tens of kilobytes rather than seven carrying 1.7 MB between them.
 
 **A read never undoes an unwritten change.** The week is read on the worker thread and
 changed on the window's, so a card dragged while a read was in flight could be overwritten

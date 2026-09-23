@@ -8,7 +8,7 @@ from brainwaves.google.comments import RawComment, RawReply
 from brainwaves.sheets import week as week_sheet
 from brainwaves.sheets.source import CsvWorkbook
 from brainwaves.sheets.staff import StaffLists
-from brainwaves.workspace import WeekSheet, write_template
+from brainwaves.workspace import WeekSheet, read_week, write_template
 
 
 class FakeComments:
@@ -29,10 +29,13 @@ class FakeComments:
                 reply = RawReply(f"r{len(thread.replies)}", "Dylan", _now(), text)
                 self.threads[index] = _replace(thread, replies=thread.replies + (reply,))
 
-    def resolve(self, file_id, comment_id):
+    def resolve(self, file_id, comment_id, text="Resolved"):
         for index, thread in enumerate(self.threads):
             if thread.id == comment_id:
-                self.threads[index] = _replace(thread, resolved=True)
+                reply = RawReply(f"r{len(thread.replies)}", "Dylan", _now(), text)
+                self.threads[index] = _replace(
+                    thread, resolved=True, replies=thread.replies + (reply,)
+                )
 
 
 TAB_IDS = {
@@ -56,21 +59,6 @@ class FakeWorkbook(CsvWorkbook):
     def __init__(self, root):
         super().__init__(root)
         self.applied: list[dict] = []
-
-    class _Spreadsheet:
-        def __init__(self, workbook):
-            self.workbook = workbook
-
-        @property
-        def sheet1(self):
-            return self
-
-        def update_title(self, title):
-            self.workbook.clear(title)
-
-    @property
-    def spreadsheet(self):
-        return self._Spreadsheet(self)
 
     def tab_id(self, tab):
         return TAB_IDS.get(tab, 9)
@@ -107,28 +95,16 @@ class FakeWorkspace:
         self.root = root
         self.comments = FakeComments()
         self.drive = FakeDrive(root)
+        self.reads = 0
         self.staff = staff or StaffLists(
             names=("Dylan", "Vic", "Catana"),
             categories={"Counselor": 22, "VL": 4},
             skills={"Canopy Tour": 14, "Low Ropes": 7, "Lifeguard": 1},
         )
 
-    def read(self, workbook, week_id):
-        tabs = [week_sheet.BOARD_TAB, week_sheet.ROSTER_TAB, week_sheet.LOCATIONS_TAB]
-        tables = workbook.read_many(tabs)
-        cabins = week_sheet.parse_roster(tables[week_sheet.ROSTER_TAB])
-        week = week_sheet.parse_week(week_id, tables[week_sheet.BOARD_TAB], cabins)
-        return WeekSheet(
-            workbook, week, week_sheet.parse_locations(tables[week_sheet.LOCATIONS_TAB])
-        )
-
-    def read_board(self, sheet, cabins=None):
-        board = sheet.workbook.read(week_sheet.BOARD_TAB)
-        week = week_sheet.parse_week(sheet.week.id, board, cabins or sheet.week.cabins)
-        return WeekSheet(sheet.workbook, week, sheet.locations)
-
-    def staff_lists(self):
-        return self.staff
+    def read(self, workbook, week_id, report=None):
+        self.reads += 1
+        return read_week(workbook, week_id)
 
 
 def build(root, week, locations=("Hot Rocks", "Low Ropes 1")) -> tuple[FakeWorkspace, WeekSheet]:

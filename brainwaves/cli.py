@@ -91,16 +91,7 @@ def _template(config, arguments) -> int:
 
 
 class _CsvTemplate(CsvWorkbook):
-    """A CSV workbook that answers the two spreadsheet questions `write_template` asks."""
-
-    class _Sheet1:
-        def update_title(self, title) -> None:
-            """CSV files are named by tab already."""
-
-    @property
-    def spreadsheet(self):
-        """Stands in for the gspread spreadsheet."""
-        return type("Spreadsheet", (), {"sheet1": self._Sheet1()})()
+    """A CSV workbook that answers the one spreadsheet question `write_template` asks."""
 
     def tab_id(self, tab: str) -> int:
         """Formatting is discarded, so any id will do."""

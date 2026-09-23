@@ -1,8 +1,9 @@
 """Sheets API requests that turn the Board tab into something worth looking at.
 
-Because every card block has the same shape, one `updateCells` request carries the format
-and the data validation for a whole day column, cards and all. That keeps a week's
-formatting to something like a hundred requests rather than a few thousand.
+Because every card block has the same shape, one card's format and data validation is
+written out cell by cell and then pasted over every other card on the board. Writing every
+card's cells out instead came to 1.7 MB for a twenty-cabin week, which was most of the time
+it took to format one; this way the whole board is one request of a few tens of kilobytes.
 
 None of this is needed to read a board, so a sheet whose formatting has been lost still
 loads.
@@ -57,7 +58,7 @@ def board_requests(
         *_widths(tab_id, week.columns),
         *_headings(tab_id, week, columns),
         *_cabin_column(tab_id, week),
-        *(_card_column(tab_id, week, column, locations_tab) for column in range(week.columns)),
+        *_cards(tab_id, week, locations_tab),
         *_borders(tab_id, week),
         *(_risk_colors(tab_id) if new_sheet else []),
     ]
@@ -265,10 +266,19 @@ def _cabin_column(tab_id: int, week: Week) -> list[dict]:
     return requests
 
 
-def _card_column(tab_id: int, week: Week, column: int, locations_tab: str) -> dict:
-    """Format and validation for one day's worth of cards, as a single request."""
-    top = layout.FIRST_CARD_ROW
-    left = layout.column_origin(column)
+def _cards(tab_id: int, week: Week, locations_tab: str) -> list[dict]:
+    """Format and validation for every card on the board, as two requests.
+
+    The first card block is written out cell by cell, which also wipes whatever borders it
+    had, and then pasted over the whole card area. A paste into a range that is a whole
+    number of blocks tall and wide repeats the block to fill it. PASTE_FORMAT carries the
+    format and the data validation and nothing else: not the values, and not the risk
+    colours, which have a paste type of their own.
+    """
+    if not week.cabins:
+        return []
+    top, left = layout.card_origin(0, 0)
+    block = _range(tab_id, top, left, layout.CARD_ROWS, layout.CARD_COLUMNS)
     rows = [
         {
             "values": [
@@ -276,18 +286,31 @@ def _card_column(tab_id: int, week: Week, column: int, locations_tab: str) -> di
                 for position in range(layout.CARD_COLUMNS)
             ]
         }
-        for _ in week.cabins
         for offset in range(layout.CARD_ROWS)
     ]
-    return {
-        "updateCells": {
-            "range": _range(
-                tab_id, top, left, len(week.cabins) * layout.CARD_ROWS, layout.CARD_COLUMNS
-            ),
-            "rows": rows,
-            "fields": "userEnteredFormat,dataValidation",
-        }
-    }
+    return [
+        {
+            "updateCells": {
+                "range": block,
+                "rows": rows,
+                "fields": "userEnteredFormat,dataValidation",
+            }
+        },
+        {
+            "copyPaste": {
+                "source": block,
+                "destination": _range(
+                    tab_id,
+                    top,
+                    left,
+                    len(week.cabins) * layout.CARD_ROWS,
+                    week.columns * layout.CARD_COLUMNS,
+                ),
+                "pasteType": "PASTE_FORMAT",
+                "pasteOrientation": "NORMAL",
+            }
+        },
+    ]
 
 
 def _cell_for(row_offset: int, position: int, locations_tab: str) -> dict:
@@ -510,10 +533,44 @@ def list_tab_requests(tab_id: int, columns: int, widths=(), banded: bool = True)
 
 
 def support_requests(view, tab_id: int) -> list[dict]:
-    """Shape the Support Requests tab: a title, then a block per day."""
+    """Shape the Support Requests tab: a title, then a block per day.
+
+    The day blocks move whenever a card starts or stops needing something, so the tab is
+    put back to plain first. Otherwise a day heading's merge, height and border would stay
+    where the heading used to be, and a row of requests landing there would show only its
+    first cell.
+    """
     columns = len(SUPPORT_HEADER)
     rows = max(len(view.table), 1)
+    whole_tab = {"sheetId": tab_id}
     requests = [
+        {"unmergeCells": {"range": whole_tab}},
+        {
+            "repeatCell": {
+                "range": whole_tab,
+                "cell": {
+                    "userEnteredFormat": {
+                        "backgroundColor": sheets_color(SURFACE),
+                        "verticalAlignment": "MIDDLE",
+                        "wrapStrategy": "WRAP",
+                        "padding": dict(PAD),
+                        "textFormat": _text(10),
+                    }
+                },
+                # The whole format, borders included, so nothing from the last layout stays.
+                "fields": "userEnteredFormat",
+            }
+        },
+        {
+            "autoResizeDimensions": {
+                "dimensions": {
+                    "sheetId": tab_id,
+                    "dimension": "ROWS",
+                    "startIndex": 0,
+                    "endIndex": rows,
+                }
+            }
+        },
         {
             "updateSheetProperties": {
                 "properties": {
@@ -523,20 +580,6 @@ def support_requests(view, tab_id: int) -> list[dict]:
                 "fields": "gridProperties(hideGridlines,frozenRowCount)",
             }
         },
-        _repeat(
-            tab_id,
-            0,
-            0,
-            rows,
-            columns,
-            {
-                "backgroundColor": sheets_color(SURFACE),
-                "verticalAlignment": "MIDDLE",
-                "wrapStrategy": "WRAP",
-                "padding": dict(PAD),
-                "textFormat": _text(10),
-            },
-        ),
         _merge(tab_id, 0, 0, 1, columns),
         _repeat(
             tab_id,

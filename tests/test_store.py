@@ -137,24 +137,25 @@ def test_our_own_write_is_not_reported_as_a_change(tmp_path, week):
     assert store.poll() is False
 
 
-def test_a_poll_reads_the_board_and_leaves_the_other_tabs_alone(tmp_path, week):
+def test_a_poll_is_one_read(tmp_path, week):
+    """The board, the roster and the locations come in one request, not one each."""
     store = store_for(tmp_path, week)
-    store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
-    assert store.poll() is False
-    assert "C9" not in [c.name for c in store.week.cabins]
+    before = store.workspace.reads
+    store.poll()
+    assert store.workspace.reads == before + 1
 
 
-def test_reading_the_reference_tabs_picks_up_a_new_cabin(tmp_path, week):
+def test_a_poll_picks_up_a_new_cabin(tmp_path, week):
     store = store_for(tmp_path, week)
     store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
-    assert store.reload_reference() is True
+    assert store.poll() is True
     assert "C9" in [c.name for c in store.week.cabins]
 
 
-def test_reading_the_reference_tabs_keeps_the_board_it_already_has(tmp_path, week):
+def test_a_poll_picks_up_a_new_location_and_keeps_the_board(tmp_path, week):
     store = store_for(tmp_path, week)
     store.workbook.write(week_sheet.LOCATIONS_TAB, [["Secret Pool"]], "A99")
-    assert store.reload_reference() is False
+    assert store.poll() is False
     assert "Secret Pool" in store.locations
     assert store.week.card("M1", 0).title == "Becoming a team"
 
@@ -199,7 +200,6 @@ def test_a_new_card_id_is_not_reported_as_a_change(tmp_path, week):
 
 def test_the_staff_lists_come_from_the_camp_documents(tmp_path, week):
     store = store_for(tmp_path, week)
-    store.load_staff()
     assert "Catana" in store.staff.names
     assert store.staff.categories["Counselor"] == 22
     assert store.staff.skills["Canopy Tour"] == 14
@@ -213,30 +213,30 @@ def test_the_summary_counts_placed_and_unplaced(week):
 def test_a_poll_that_lands_on_an_unwritten_change_does_not_undo_it(tmp_path, week):
     """A card dragged while a poll was reading must survive the poll finishing."""
     store = store_for(tmp_path, week)
-    read_board = store.workspace.read_board
+    read = store.workspace.read
 
-    def read_then_drag(sheet, cabins=None):
-        fresh = read_board(sheet, cabins)
+    def read_then_drag(workbook, week_id):
+        fresh = read(workbook, week_id)
         store.swap("M1", 0, 3)  # as if the user dragged a card mid-read
         return fresh
 
-    store.workspace.read_board = read_then_drag
+    store.workspace.read = read_then_drag
     assert store.poll() is False
     assert store.week.card("M1", 3).id == "aaa111"  # the drag stands
-    store.workspace.read_board = read_board
+    store.workspace.read = read
     store.flush()
     store.poll()
     assert store.week.card("M1", 3).id == "aaa111"
 
 
-def test_the_reference_read_also_leaves_an_unwritten_change_alone(tmp_path, week):
+def test_a_new_cabin_waits_for_an_unwritten_change(tmp_path, week):
     store = store_for(tmp_path, week)
     store.workbook.write(week_sheet.ROSTER_TAB, [["C9", "Newbie", ""]], "A99")
     store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
-    assert store.reload_reference() is False
+    assert store.poll() is False
     assert store.week.card("O1", 1).title == "Canoe"
     store.flush()
-    assert store.reload_reference() is True
+    assert store.poll() is True
     assert "C9" in [c.name for c in store.week.cabins]
     assert store.week.card("O1", 1).title == "Canoe"
 
@@ -254,9 +254,12 @@ def test_writing_a_card_leaves_the_cell_the_comment_is_anchored_to_alone(tmp_pat
     store = store_for(tmp_path, week)
     _, row, column = anchored_cell(anchor_for(store.week, "aaa111", 0))
     written = []
-    store.workbook.write_many = lambda tab, blocks: written.extend(blocks)
+    store.workbook.write_batch = lambda writes: written.extend(
+        (cell, table) for tab, cell, table in writes if tab == week_sheet.BOARD_TAB
+    )
     store.save_card("M1", 0, None)
     store.flush()
+    assert written
     touched = {
         (a1_to_index(cell)[1] + offset)
         for cell, table in written
@@ -337,3 +340,132 @@ def test_a_poll_keeps_a_cabin_added_since_the_last_full_read(tmp_path, week):
     store.flush()
     assert store.poll() is False
     assert "C9" in [c.name for c in store.week.cabins]
+
+
+def writes_to(store):
+    """Every call that writes cells, as the list of tabs each one touched."""
+    calls = []
+    write_batch = store.workbook.write_batch
+
+    def counted(writes):
+        calls.append([tab for tab, _, _ in writes])
+        write_batch(writes)
+
+    store.workbook.write_batch = counted
+    return calls
+
+
+def test_several_edits_waiting_together_go_in_one_request(tmp_path, week):
+    store = store_for(tmp_path, week)
+    calls = writes_to(store)
+    store.swap("M1", 0, 3)
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.set_subtitle(2, "Pizza Day")
+    store.flush()
+    assert len(calls) == 1
+    store.reload()
+    assert store.week.card("M1", 3).id == "aaa111"
+    assert store.week.card("O1", 1).title == "Canoe"
+    assert store.week.days[2].subtitle == "Pizza Day"
+
+
+def test_an_edit_that_changes_no_request_leaves_the_support_tab_alone(tmp_path, week):
+    from dataclasses import replace
+
+    store = store_for(tmp_path, week)
+    calls = writes_to(store)
+    applied = len(store.workbook.applied)
+    card = store.week.card("M1", 0)
+    store.save_card("M1", 0, replace(card, description="Something else entirely"))
+    store.flush()
+    assert calls == [[week_sheet.BOARD_TAB, week_sheet.BOARD_TAB]]
+    assert len(store.workbook.applied) == applied  # and nothing is formatted
+
+
+def test_the_support_tab_goes_in_the_same_request_as_the_card(tmp_path, week):
+    store = store_for(tmp_path, week)
+    calls = writes_to(store)
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True))
+    store.flush()
+    assert len(calls) == 1 and week_sheet.REQUESTS_TAB in calls[0]
+    rows = [
+        row
+        for row in store.workbook.read(week_sheet.REQUESTS_TAB)
+        if row and row[0].startswith("O1")
+    ]
+    assert rows and "Canoe" in rows[0]
+
+
+def test_a_shorter_support_tab_leaves_nothing_behind(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True))
+    store.flush()
+    store.save_card("O1", 1, None)
+    store.flush()
+    table = store.workbook.read(week_sheet.REQUESTS_TAB)
+    assert not any("Canoe" in row for row in table)
+
+
+def test_the_support_tab_is_reformatted_only_when_its_days_move(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True))
+    store.flush()
+    applied = len(store.workbook.applied)
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True, food=True))
+    store.flush()
+    assert len(store.workbook.applied) == applied  # a tick changed; no heading moved
+    store.save_card("C1", 0, CabinAct(id="eee555", title="Hike", van=True))
+    store.flush()
+    assert len(store.workbook.applied) > applied  # Tuesday onwards moved down a row
+
+
+def test_a_new_subtitle_reaches_the_support_tab(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.set_subtitle(0, "Coco's Day")
+    store.flush()
+    table = store.workbook.read(week_sheet.REQUESTS_TAB)
+    assert ["Monday", "Coco's Day"] in [row[:2] for row in table]
+
+
+def test_a_support_tab_somebody_else_wrote_is_written_over(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.workbook.write(week_sheet.REQUESTS_TAB, [["stale"]], "A40")
+    store.poll()
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.flush()
+    assert not any("stale" in row for row in store.workbook.read(week_sheet.REQUESTS_TAB))
+
+
+def test_a_failed_write_forgets_what_the_support_tab_holds(tmp_path, week):
+    import pytest
+
+    store = store_for(tmp_path, week)
+
+    def refuse(writes):
+        raise OSError("offline")
+
+    store.workbook.write_batch = refuse
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True))
+    with pytest.raises(OSError):
+        store.flush()
+    del store.workbook.write_batch
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe", van=True))
+    store.flush()
+    rows = [
+        row
+        for row in store.workbook.read(week_sheet.REQUESTS_TAB)
+        if row and row[0].startswith("O1")
+    ]
+    assert rows
+
+
+def test_closing_a_thread_is_one_call_per_thread(tmp_path, week):
+    store = store_for(tmp_path, week)
+    store.add_comment("aaa111", "Who is lifeguarding?")
+    store.flush()
+    replies = []
+    store.workspace.comments.reply = lambda *args: replies.append(args)
+    store.save_card("M1", 0, None)
+    store.flush()
+    assert replies == []
+    assert store.comments[0].resolved

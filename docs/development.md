@@ -24,9 +24,14 @@ Reading a week is `workspace.Workspace.read` → `sheets.week.parse_week`; writi
 returns the dataclasses in `model.py`; nothing holds global state except `BoardStore`,
 which holds the one week that is open and the one lock that keeps its two threads apart.
 
-A poll calls `Workspace.read_board`, which reads the Board tab alone and keeps the cabins
-and locations already in hand. `Workspace.read` reads everything and is what opening a week
-and pressing Refresh do.
+A poll, opening a week and pressing Refresh all call `Workspace.read`, which fetches the
+Board, Roster, Locations and Support Requests tabs in one request. Writes are gathered by
+`BoardStore._write_dirty` and go out through `SheetsWorkbook.write_batch`, one request for
+every card changed since the last write plus the Support Requests tab, when it has changed.
+
+`SheetsWorkbook` talks to gspread's `HTTPClient` rather than its `Spreadsheet`, whose tab
+lookups each fetch the whole spreadsheet's metadata again. `tests/test_sheets_workbook.py`
+counts the calls it makes; a change that adds one should have a reason.
 
 ## Running the tests
 

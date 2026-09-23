@@ -142,7 +142,7 @@ def test_making_a_week_reports_what_it_is_doing(tmp_path, week):
     said = []
     write_template(FakeWorkbook(tmp_path), week, ("Hot Rocks",), report=said.append)
     assert "Writing the board" in said
-    assert len(said) >= 4
+    assert len(said) >= 3
 
 
 def test_the_window_calls_google_the_way_google_is_declared():
@@ -159,10 +159,10 @@ def test_the_window_calls_google_the_way_google_is_declared():
 
     signature(Workspace.create_week).bind(None, "folder-id", WeekId(2, 1), None, report=print)
     signature(Workspace.read).bind(None, None, WeekId(2, 1))
-    signature(Workspace.read_board).bind(None, None)
+    signature(Workspace.open_week).bind(None, "folder-id", WeekId(2, 1), report=print)
     signature(Workspace.weeks).bind(None, "folder-id")
     signature(Workspace.open).bind(None, "file-id", WeekId(2, 1))
-    signature(Workspace.staff_lists).bind(None)
+    signature(Workspace.load_staff).bind(None)
     signature(write_template).bind(None, None, (), report=print)
 
 
@@ -182,9 +182,8 @@ def test_the_window_calls_the_store_the_way_the_store_is_declared():
     signature(BoardStore.resolve).bind(None, "comment-id")
     signature(BoardStore.poll).bind(None)
     signature(BoardStore.reload).bind(None)
-    signature(BoardStore.reload_reference).bind(None)
+    signature(BoardStore.reload_comments).bind(None)
     signature(BoardStore.flush).bind(None)
-    signature(BoardStore.load_staff).bind(None)
 
 
 def test_nothing_is_merged_across_the_frozen_edge(requests):
@@ -303,3 +302,42 @@ def test_a_dropped_connection_is_tried_again():
     assert is_transient(OSError("connection reset"))
     assert is_transient(Unwell(429))
     assert not is_transient(ValueError("nonsense"))
+
+
+def test_the_board_formatting_is_small_enough_to_send_at_once():
+    """Every card's cells written out came to 1.7 MB for twenty cabins; tiled, it is not."""
+    import json
+
+    from brainwaves.defaults import DEFAULT_CABINS
+    from brainwaves.sheets.source import BATCH_SIZE
+
+    week = Week(WeekId(2, 1), cabins=sort_cabins(Cabin(name) for name in DEFAULT_CABINS))
+    built = board_requests(week, BOARD, LOCATIONS_TAB, new_sheet=True, size=(1000, 26))
+    assert len(json.dumps(built)) < 200_000
+    assert len(built) <= BATCH_SIZE
+
+
+def test_one_card_block_is_pasted_over_every_card(requests):
+    paste = next(r["copyPaste"] for r in requests if "copyPaste" in r)
+    source, destination = paste["source"], paste["destination"]
+    assert paste["pasteType"] == "PASTE_FORMAT"
+    assert source["endRowIndex"] - source["startRowIndex"] == layout.CARD_ROWS
+    assert source["endColumnIndex"] - source["startColumnIndex"] == layout.CARD_COLUMNS
+    height = destination["endRowIndex"] - destination["startRowIndex"]
+    width = destination["endColumnIndex"] - destination["startColumnIndex"]
+    assert height == 5 * layout.CARD_ROWS  # every cabin in the fixture
+    assert width == 8 * layout.CARD_COLUMNS  # five days and three extra columns
+    formatted = next(r["updateCells"] for r in requests if "updateCells" in r)
+    assert formatted["range"] == source
+
+
+def test_the_support_tab_is_put_back_to_plain_before_it_is_laid_out(week):
+    """Day headings move; their merges and heights must not stay where they were."""
+    from brainwaves.sheets.style import support_requests
+    from brainwaves.sheets.support import render_support
+
+    built = support_requests(render_support(week), 3)
+    kinds = [next(iter(request)) for request in built]
+    assert kinds[0] == "unmergeCells"
+    assert built[1]["repeatCell"]["fields"] == "userEnteredFormat"
+    assert kinds.index("unmergeCells") < kinds.index("mergeCells")

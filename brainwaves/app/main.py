@@ -7,7 +7,7 @@ shows.
 
 import sys
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import QEvent, Qt, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QDockWidget,
@@ -47,7 +47,16 @@ CONFIG_HELP = "Brain Waves needs a Google OAuth client in config.toml. See the i
 
 # Jobs that happen on a timer. They light no indicator and raise no dialog, because at a
 # couple of seconds apart an indicator that blinks constantly stops meaning anything.
-QUIET_JOBS = {"sync", "comments", "update-quiet"}
+QUIET_JOBS = {"sync", "comments", "staff", "update-quiet"}
+
+# How long the session and week boxes wait for the clicking to stop before opening a week,
+# so stepping from week 1 to week 4 opens week 4 rather than weeks 2, 3 and 4 in turn.
+PICK_DELAY_MS = 350
+
+# While the window is in the background, the board is read this many times less often.
+# Coming back to the window reads it at once, so nobody sees the difference; Google's
+# quota does.
+BACKGROUND_SLOWDOWN = 4
 
 
 def run_app(config: Config | None = None) -> int:
@@ -71,6 +80,9 @@ class MainWindow(QMainWindow):
         self.store: BoardStore | None = None
         self.selected_card: str | None = None
         self.comments_pending = False
+        # Every week opened this run, so going back to one draws at once and reads after.
+        self.stores: dict[WeekId, BoardStore] = {}
+        self.checked_for_updates = False
         self.setWindowTitle("Brain Waves")
         self.resize(1440, 900)
 
@@ -125,11 +137,16 @@ class MainWindow(QMainWindow):
 
         self._build_toolbar()
         self.poll = QTimer(self)
-        self.poll.setInterval(max(self.config.poll_seconds, 1) * 1000)
+        self.poll_interval = max(self.config.poll_seconds, 1) * 1000
+        self.poll.setInterval(self.poll_interval)
         self.poll.timeout.connect(self._poll)
         self.comment_poll = QTimer(self)
         self.comment_poll.setInterval(max(self.config.comment_poll_seconds, 1) * 1000)
         self.comment_poll.timeout.connect(self._poll_comments)
+        self.pick = QTimer(self)
+        self.pick.setSingleShot(True)
+        self.pick.setInterval(PICK_DELAY_MS)
+        self.pick.timeout.connect(self.open_week)
         self._welcome_step = SIGN_IN
 
     def start(self) -> None:
@@ -147,10 +164,23 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """Let queued writes finish before the window goes."""
         self._stop_polling()
-        if self.store is not None and self.store.busy:
-            self.jobs.submit("flush", self.store.flush)
+        for store in self.stores.values():
+            if store.busy:
+                self.jobs.submit("flush", store.flush)
         self.jobs.stop()
         super().closeEvent(event)
+
+    def changeEvent(self, event) -> None:  # noqa: N802 - Qt's name
+        """Read the board less often in the background, and at once on coming back."""
+        super().changeEvent(event)
+        if event.type() != QEvent.ActivationChange:
+            return
+        if not self.isActiveWindow():
+            self.poll.setInterval(self.poll_interval * BACKGROUND_SLOWDOWN)
+        elif self.poll.interval() != self.poll_interval:
+            self.poll.setInterval(self.poll_interval)
+            if self.poll.isActive():
+                self._poll()
 
     def _build_toolbar(self) -> None:
         bar = QToolBar("Main")
@@ -163,8 +193,8 @@ class MainWindow(QMainWindow):
         bar.addWidget(QLabel("Session"))
         self.session_box = _counter(self.state.session)
         self.week_box = _counter(self.state.week)
-        self.session_box.valueChanged.connect(self.open_week)
-        self.week_box.valueChanged.connect(self.open_week)
+        self.session_box.valueChanged.connect(lambda _value: self.pick.start())
+        self.week_box.valueChanged.connect(lambda _value: self.pick.start())
         bar.addWidget(self.session_box)
         bar.addWidget(QLabel("Week"))
         bar.addWidget(self.week_box)
@@ -225,6 +255,7 @@ class MainWindow(QMainWindow):
             return
         folder_id, name = dialog.folder
         self.state = State(folder_id, name, self.state.session, self.state.week)
+        self.stores.clear()
         save_state(self.state)
         self.open_week()
 
@@ -235,21 +266,26 @@ class MainWindow(QMainWindow):
         self.state = with_week(self.state, self.session_box.value(), self.week_box.value())
         save_state(self.state)
         week_id = WeekId(self.state.session, self.state.week)
+        self.pick.stop()
         self._stop_polling()
+        if week_id in self.stores:
+            # Seen already this run: show it as it was, and read what has changed since.
+            self._opened((week_id, self.stores[week_id]))
+            self._poll()
+            return
         if self.store is None:
             self.welcome.show_working(f"Opening {week_id.title}")
             self.pages.setCurrentWidget(self.welcome)
-        self._submit("open", lambda: self._open(week_id), f"Opening {week_id.title}...")
+        folder_id = self.state.folder_id
+        self._submit("open", lambda: self._open(folder_id, week_id), f"Opening {week_id.title}...")
 
-    def _open(self, week_id: WeekId) -> BoardStore | None:
-        sheets = self.workspace.weeks(self.state.folder_id)
-        if week_id not in sheets:
-            return None
-        sheet = self.workspace.open(sheets[week_id].id, week_id, report=self.jobs.progress.emit)
-        store = BoardStore(self.workspace, sheet)
-        store.load_staff()
-        store.reload_comments()
-        return store
+    def _open(self, folder_id: str, week_id: WeekId) -> tuple[WeekId, BoardStore | None]:
+        """Read the week and nothing else, so the board is up as soon as it can be.
+
+        The staff lists and the comments follow as quiet jobs of their own once it is.
+        """
+        sheet = self.workspace.open_week(folder_id, week_id, report=self.jobs.progress.emit)
+        return week_id, None if sheet is None else BoardStore(self.workspace, sheet)
 
     def start_new_week(self) -> None:
         """Make a sheet for the week the toolbar is showing, from the template.
@@ -430,10 +466,10 @@ class MainWindow(QMainWindow):
         self._submit("sync", self.store.poll)
 
     def _poll_comments(self) -> None:
-        """Read the comments, the cabins and the locations, on their own slower beat."""
+        """Read the comments, on their own slower beat."""
         if self.store is None or "comments" in self.running:
             return
-        self._submit("comments", self.store.reload_reference)
+        self._submit("comments", self.store.reload_comments)
 
     def refresh(self) -> None:
         """Read everything again now, whatever the revision says."""
@@ -468,7 +504,8 @@ class MainWindow(QMainWindow):
         """Draw whatever somebody else changed, and only that.
 
         A colleague moving one card should cost two slots here, not the whole board. The
-        board knows the week it last drew, so the difference is there to be read.
+        board knows the week it last drew, so the difference is there to be read; a card
+        whose comment count has changed is redrawn too, to show the new count.
         """
         if self.store is None:
             return
@@ -476,7 +513,13 @@ class MainWindow(QMainWindow):
         if changed is None:
             self._draw()
             return
-        self._draw_slots(changed)
+        counts, drawn = binding.count_by_card(self.store.comments), self.board.counts
+        recounted = {
+            slot
+            for slot, card in self.store.week.cards.items()
+            if counts.get(card.id) != drawn.get(card.id)
+        }
+        self._draw_slots(list({*changed, *recounted}))
 
     def _draw_alongside(self) -> None:
         """The panels beside the board, which are small enough to redraw either way."""
@@ -527,6 +570,8 @@ class MainWindow(QMainWindow):
             self._signed_in(result)
         elif name == "open":
             self._opened(result)
+        elif name == "staff" and result:
+            self._draw_heroes()
         elif name == "create":
             self._created(result)
         elif name in {"reload", "sync"} and result or name == "comments":
@@ -545,8 +590,17 @@ class MainWindow(QMainWindow):
             self.comments_pending = False
             self._draw_changes()
 
-    def _opened(self, store: BoardStore | None) -> None:
-        week_id = WeekId(self.state.session, self.state.week)
+    def _draw_heroes(self) -> None:
+        """Redraw the cards with HERO chips, which the staff lists have just said more about."""
+        if self.store is None or self.pages.currentWidget() is not self.board:
+            return
+        slots = [slot for slot, card in self.store.week.cards.items() if card.heroes]
+        self._draw_slots(slots)
+
+    def _opened(self, result: tuple[WeekId, BoardStore | None]) -> None:
+        week_id, store = result
+        if week_id != WeekId(self.state.session, self.state.week):
+            return  # the week was changed again while this one was being read
         if store is None:
             self.store = None
             self.sheet_label.setText("")
@@ -557,6 +611,12 @@ class MainWindow(QMainWindow):
                 "Link to Google Sheets picks a different folder.",
             )
             return
+        fresh = week_id not in self.stores
+        self.stores[week_id] = store
+        if fresh:
+            self._submit("comments", store.reload_comments)
+        if self.workspace.staff is None and "staff" not in self.running:
+            self._submit("staff", self.workspace.load_staff)
         self.store = store
         self.selected_card = None
         self.sheet_label.setText(f"{store.workbook.title} - {self.state.folder_name}")
@@ -564,7 +624,9 @@ class MainWindow(QMainWindow):
         self._set_busy("")
         self.poll.start()
         self.comment_poll.start()
-        self.check_for_updates(quietly=True)
+        if not self.checked_for_updates:
+            self.checked_for_updates = True
+            self.check_for_updates(quietly=True)
 
     def _created(self, week_id: WeekId) -> None:
         self.open_week()

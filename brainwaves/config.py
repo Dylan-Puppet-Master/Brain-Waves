@@ -36,9 +36,9 @@ DEFAULT_RELEASES = "https://api.github.com/repos/camp-augusta/brainwaves/release
 class Config:
     """What Brain Waves needs to reach Google and the Skills doc.
 
-    `poll_seconds` is how often to read the board, which is the tab people move cards on.
-    `comment_poll_seconds` is how often to read the comments, the cabins and the locations,
-    which change far less often.
+    `poll_seconds` is how often to read the board, the cabins and the locations, which is
+    one request. `comment_poll_seconds` is how often to read the comments, which live in
+    Drive and change far less often.
     """
 
     client_id: str = ""

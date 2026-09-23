@@ -14,6 +14,7 @@ whether two cabins asking for a Lifeguard on one day is a problem or not.
 """
 
 from dataclasses import dataclass, field
+from functools import cached_property
 
 from brainwaves.names import normalize
 from brainwaves.sheets.source import Table
@@ -49,24 +50,33 @@ class StaffLists:
 
     def kind_of(self, text: str) -> str:
         """Whether a chip names a person, a category, a skill — or, unknown, a person."""
-        wanted = normalize(text)
-        for kind, known in (
-            (PERSON, {normalize(name) for name in self.names}),
-            (CATEGORY, {normalize(name) for name in self.categories}),
-            (SKILL, {normalize(name) for name in self.skills}),
-        ):
-            if wanted in known:
-                return kind
-        return PERSON
+        return self._kinds.get(normalize(text), PERSON)
 
     def how_many(self, text: str) -> int:
         """How many people could answer this chip. One, for a person or a name we do not know."""
-        wanted = normalize(text)
-        for known in (self.categories, self.skills):
-            for name, count in known.items():
-                if normalize(name) == wanted:
-                    return max(count, 1)
-        return 1
+        return max(self._counts.get(normalize(text), 1), 1)
+
+    # Every chip on every card asks both questions each time the board is drawn, so the
+    # answers are worked out once. A person's name wins over a category or skill spelled
+    # the same, and a category over a skill.
+
+    @cached_property
+    def _kinds(self) -> dict[str, str]:
+        kinds: dict[str, str] = {}
+        for kind, names in (
+            (SKILL, self.skills),
+            (CATEGORY, self.categories),
+            (PERSON, self.names),
+        ):
+            kinds.update((normalize(name), kind) for name in names)
+        return kinds
+
+    @cached_property
+    def _counts(self) -> dict[str, int]:
+        counts: dict[str, int] = {}
+        for known in (self.skills, self.categories):
+            counts.update((normalize(name), count) for name, count in known.items())
+        return counts
 
 
 def parse_staff_names(table: Table) -> tuple[str, ...]:

@@ -48,6 +48,8 @@ class BoardView(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.week: Week | None = None
+        # The comment counts the cards were last drawn with.
+        self.counts: dict[str, int] = {}
         self.cards: dict[str, CardWidget] = {}
         self.slots: dict[tuple[str, int], SlotWidget] = {}
         self.selected: str | None = None
@@ -110,6 +112,7 @@ class BoardView(QWidget):
         program is thinking about it.
         """
         self.week = week
+        self.counts = comment_counts
         self.staff = staff or self.staff
         wanted = [(cabin, column) for cabin, column in slots if (cabin, column) in self.slots]
         if len(wanted) != len(list(slots)):
@@ -133,6 +136,7 @@ class BoardView(QWidget):
     def show_week(self, week: Week, comment_counts: dict[str, int], staff=None) -> None:
         """Draw the week from scratch. For a change of shape, not a change of content."""
         self.week = week
+        self.counts = comment_counts
         self.staff = staff or self.staff
         self.cards.clear()
         self.slots.clear()

@@ -98,6 +98,19 @@ class Drive:
                 found[week_id] = item
         return found
 
+    def create_spreadsheet(self, name: str, parent: str) -> DriveItem:
+        """Make an empty spreadsheet in a folder. Not tried again: that could make two."""
+        made = (
+            self.service.files()
+            .create(
+                body={"name": name, "mimeType": SHEET_MIME, "parents": [parent]},
+                fields="id, name",
+                supportsAllDrives=True,
+            )
+            .execute()
+        )
+        return DriveItem(made["id"], made.get("name", name), is_folder=False)
+
     def name(self, file_id: str) -> str:
         """One file's name."""
         request = self.service.files().get(fileId=file_id, fields="name", supportsAllDrives=True)

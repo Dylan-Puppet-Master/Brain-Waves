@@ -93,15 +93,18 @@ class CommentStore:
             fileId=file_id, commentId=comment_id, body={"content": text}, fields="id"
         ).execute()
 
-    def resolve(self, file_id: str, comment_id: str) -> None:
-        """Close a thread, the way the Google Sheets Resolve button does."""
+    def resolve(self, file_id: str, comment_id: str, text: str = "Resolved") -> None:
+        """Close a thread, the way the Google Sheets Resolve button does.
+
+        `text` is the reply that closes it, so saying why and closing is one call, not two.
+        """
         # Resolving twice resolves once, so this one may safely be tried again.
         retrying(
             self.service.replies()
             .create(
                 fileId=file_id,
                 commentId=comment_id,
-                body={"action": "resolve", "content": "Resolved"},
+                body={"action": "resolve", "content": text},
                 fields="id",
             )
             .execute

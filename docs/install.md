@@ -73,7 +73,7 @@ categories = "1ldem…"   # the Staff Categories spreadsheet
 
 [sync]
 poll_seconds         = 3    # how often to read the board
-comment_poll_seconds = 10   # how often to read comments, cabins and locations
+comment_poll_seconds = 10   # how often to read comments
 
 [updates]
 releases_url = "https://api.github.com/repos/camp-augusta/brainwaves/releases/latest"
