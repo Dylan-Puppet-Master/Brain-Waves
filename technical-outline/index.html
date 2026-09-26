@@ -1,0 +1,788 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Cabin activity scheduling for Camp Augusta">
+      
+      
+      
+      
+        <link rel="prev" href="../sheets/">
+      
+      
+        <link rel="next" href="../development/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
+    
+    
+      
+        <title>Design - Brain Waves</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#design" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Brain Waves" class="md-header__button md-logo" aria-label="Brain Waves" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Brain Waves
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Design
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="default" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Dark mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Dark mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="" data-md-color-scheme="slate" data-md-color-primary="teal" data-md-color-accent="indigo"  aria-label="Light mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Light mode" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Brain Waves" class="md-nav__button md-logo" aria-label="Brain Waves" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Brain Waves
+  </label>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Home
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Install and set up
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../board/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Using the board
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../comments/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Comments
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sheets/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    The sheets
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Design
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is authoritative
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-fits-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it fits together
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decisions-worth-knowing-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions worth knowing about
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../development/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Development
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-authoritative" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What is authoritative
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#how-it-fits-together" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How it fits together
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#decisions-worth-knowing-about" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Decisions worth knowing about
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+
+<h1 id="design">Design<a class="headerlink" href="#design" title="Permanent link">&para;</a></h1>
+<h2 id="what-is-authoritative">What is authoritative<a class="headerlink" href="#what-is-authoritative" title="Permanent link">&para;</a></h2>
+<p>Google Sheets. Brain Waves holds a copy of one week so that dragging a card is instant, but
+every change is written through to the sheet, and the sheet is read again as soon as anyone
+else touches it. Nothing exists only inside the program, which is the point: when Brain
+Waves is not being maintained any more, the sheets are still there and still readable.</p>
+<h2 id="how-it-fits-together">How it fits together<a class="headerlink" href="#how-it-fits-together" title="Permanent link">&para;</a></h2>
+<div class="highlight"><pre><span></span><code>Google Drive ──┬── comments ──▶ google/comments.py ──▶ comments.py ─┐
+               │                                                    │
+               └── week sheet ──▶ sheets/week.py ──────────────────▶ model.py
+                                        ▲                            │
+                                        │                            ▼
+                                  sheets/style.py               store.py ──▶ app/
+                                  sheets/support.py                  │
+                                        ▲                            │
+                                        └──────── writes ────────────┘
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>brainwaves/model.py</code></td>
+<td>Cabin, CabinAct, Day, Week, Comment, and the moves on a week</td>
+</tr>
+<tr>
+<td><code>brainwaves/sheets/</code></td>
+<td>The Board format: geometry, parse, render, formatting, the derived Support Requests tab</td>
+</tr>
+<tr>
+<td><code>brainwaves/google/</code></td>
+<td>Sign-in, Drive browsing, Drive comments</td>
+</tr>
+<tr>
+<td><code>brainwaves/comments.py</code></td>
+<td>Which card a Drive thread is about</td>
+</tr>
+<tr>
+<td><code>brainwaves/conflicts.py</code></td>
+<td>Two cabins wanting one place or one HERO on one day</td>
+</tr>
+<tr>
+<td><code>brainwaves/workspace.py</code></td>
+<td>Finding, opening and creating week sheets</td>
+</tr>
+<tr>
+<td><code>brainwaves/store.py</code></td>
+<td>One loaded week, every change to it, and the queue of writes</td>
+</tr>
+<tr>
+<td><code>brainwaves/app/</code></td>
+<td>The window</td>
+</tr>
+<tr>
+<td><code>brainwaves/update.py</code></td>
+<td>Checking GitHub and replacing the running file</td>
+</tr>
+</tbody>
+</table>
+<h2 id="decisions-worth-knowing-about">Decisions worth knowing about<a class="headerlink" href="#decisions-worth-knowing-about" title="Permanent link">&para;</a></h2>
+<p><strong>A card has an id, and the sheet carries it.</strong> Without one, a comment could only be about a
+position, and the whole point of the program is that positions change. The id lives in a
+hidden column of each card block, so it survives being read and written by anyone.</p>
+<p><strong>A card is written without touching what a comment points at.</strong> Sheets pins a comment to a
+cell and orphans it when that cell is rewritten, and Brain Waves rewrites cards constantly.
+So a thread is anchored to the card's label cell — the one that reads <code>Activity</code>, which is
+written once when the board is laid out and never again — and a card write goes only to the
+value and flag columns beside it. That is also why laying the board out again clears only
+what lies beyond it rather than wiping the tab.</p>
+<p><strong>Drive is not one tree.</strong> My Drive, the folders other people have shared with you, and the
+shared drives a team has are three separate places, and a camp folder is most often in one
+of the last two. So the picker starts from a list of places rather than from My Drive, every
+query asks for items from all drives, and "Shared with me" is offered to look in but not to
+choose, because things appear in it and nothing can be put in it.</p>
+<p><strong>A clash is reported, never prevented.</strong> <code>conflicts.py</code> is arithmetic on a <code>Week</code> and a
+<code>StaffLists</code> and nothing else: no network, no window, no state. The Brain may well look at
+two cabins on the lake and decide it is fine, so the program does not argue — it just makes
+sure the choice is a choice rather than a surprise on the day.</p>
+<p><strong>A HERO chip is not always a person.</strong> It may be a category or a skill, meaning anyone who
+fits, and the difference decides whether asking twice is a problem. Rather than mark the
+kind on the sheet, which would make the cell harder for a person to read, the chip stays
+plain text and is matched against the three lists when it is read: name, then category, then
+skill, and a person if it is none of them. The counts come from the same read, which is what
+lets "four cabins want a Director and camp has three" be a clash while "two cabins want a
+Counselor" is not.</p>
+<p><strong>Comments are Google's, not ours.</strong> A tab of our own would have been simpler to write and
+worse to use: no notifications, no sidebar, no author. The cost is that anchoring a new
+thread to a cell uses an undocumented shape, so <code>CommentStore.create</code> falls back to an
+unanchored comment if Drive refuses the anchor. The comment is never lost.</p>
+<p><strong>Every card block is the same shape.</strong> That is what lets the whole of one day's formatting
+and data validation go in a single <code>updateCells</code> request. A week's styling is about 160
+requests; with merged title cells and per-card validation it was about 2500.</p>
+<p><strong>Writes are one card block at a time.</strong> Two village leaders filling in different cabins
+never overwrite each other, because neither writes a cell the other touched. Only changing
+the roster or adding an unplaced column rewrites the whole board.</p>
+<p><strong>Changes are queued, not awaited.</strong> <code>BoardStore</code> applies a change to its own copy and
+appends the write to <code>pending</code>; <code>flush</code> sends the queue in order from a background thread.
+The board moves at the speed of the mouse, and the writes still arrive in the order they
+were made.</p>
+<p><strong>The board is read, not asked about.</strong> Drive can say when a file last changed, and that
+answer is a couple of hundred bytes against the sixty kilobytes of reading a board. Brain
+Waves used to use it, and it was wrong to: Google Sheets does not update a file's Drive
+metadata promptly when someone edits a cell in the browser, so the check almost never
+fired for the edits that mattered most. Worse, taking a fresh revision after writing could
+adopt a revision that already contained somebody's unread edit, marking it seen and losing
+it for good. Sixty kilobytes every three seconds is cheap enough; a change signal that
+sometimes never arrives is not cheap at all.</p>
+<p>What is worth keeping down is the <em>number</em> of requests, which is what Google's quota
+counts and what each costs a fraction of a second. A poll reads the board, the roster, the
+locations and the Support Requests tab in one request - the last three are small, and
+asking for them separately was a second request for the same news. The comments come from
+Drive, on their own ten-second beat. While the window is in the background the board is
+read one tick in four, and read at once when it comes back to the front.</p>
+<p>Writes are gathered the same way. A card write sends what the card holds when it runs, so
+every card changed while the last request was in flight goes in the next one together, and
+the Support Requests tab goes in that same request, only when what it says has changed.
+Its formatting is sent again only when its day blocks move. The board's formatting is one
+card block's worth of cells pasted over every other card, which keeps a week's formatting
+to one request of a few tens of kilobytes rather than seven carrying 1.7 MB between them.</p>
+<p><strong>A read never undoes an unwritten change.</strong> The week is read on the worker thread and
+changed on the window's, so a card dragged while a read was in flight could be overwritten
+by the older board that read came back with. The store keeps one lock, held only long
+enough to swap one immutable <code>Week</code> for another and never across a network call, and a read
+that finishes to find writes still queued is thrown away — what is on screen is newer than
+what was read, so the next poll reads again.</p>
+<p><strong>Google is allowed to wobble.</strong> A small share of requests come back 429, 500, 502, 503 or
+504, and the network drops out on its own account. None of that means the request was wrong,
+so <code>google/retry.py</code> tries again after a longer wait each time. Only what can safely be
+repeated goes through it: reading anything, writing cells, resolving a thread. Posting a
+comment does not, because a second attempt would post it twice.</p>
+<p><strong>Only Drive knows a sheet was deleted.</strong> The Sheets API goes on reading and writing a
+spreadsheet in the Drive trash as if nothing had happened, so polling alone would sync a
+deleted week forever. The comment poll, which talks to Drive anyway, asks Drive first whether
+the file is still there and out of the trash; if not, the week is dropped and its unsent
+writes with it. Reopening a week asks Drive too, rather than trusting the sheet it found last
+time.</p>
+<p><strong>A timer never raises a dialog.</strong> A failed poll writes one line in the status bar and is
+tried again; only something a person asked for — opening a week, creating one, saving —
+is worth interrupting them for. At two seconds, the alternative is a wall of dialogs the
+moment the wifi dips.</p>
+<p><strong>Only what changed is redrawn.</strong> A board of twenty-one cabins is a hundred and sixty-eight
+slots, and building them all takes about a third of a second — fine when a week opens,
+hopeless as the response to dragging a card. <code>BoardView.refresh_slots</code> rebuilds the slots it
+is given and leaves the rest standing, so a move costs two of them. A poll works the same
+way: the board remembers the week it last drew, so <code>_difference</code> says which slots somebody
+else changed, and only a change of shape — a new cabin, another Extra column, a new day
+subtitle — falls back to the whole board.</p>
+<p>The same rule applies to the small things. Ringing a selected card touches the two cards
+whose ring changed, not all of them, and marking where a dragged card may be dropped
+touches the eight slots that will take it rather than the hundred and sixty that will not.</p>
+<p><strong>The window never talks to Google.</strong> Everything goes through <code>app/sync.JobQueue</code>, one job
+at a time, reporting back through signals. There is no other thread, no lock, and no place
+where the window can be waiting on the network.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.sections", "content.code.copy"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
+      
+    
+  </body>
+</html>
