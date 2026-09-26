@@ -13,7 +13,7 @@ from brainwaves.app.card import MIME, CardWidget, SlotWidget
 from brainwaves.app.chips import ChipEditor
 from brainwaves.app.comment_panel import CommentPanel
 from brainwaves.app.dialogs import FolderDialog, RosterDialog
-from brainwaves.app.editor import CardDialog
+from brainwaves.app.editor import CardForm
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.widgets import when_phrase
 from brainwaves.comments import count_by_card, for_card
@@ -80,7 +80,7 @@ def test_dropping_asks_for_a_swap(app, store):
 
 
 def test_the_editor_returns_what_was_typed(app, store):
-    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff)
+    dialog = CardForm(CabinAct(), "M1 - Monday", store.locations, store.staff)
     dialog.title.setText(" Canoe trip ")
     dialog.materials.setText("paddles, lifejackets")
     dialog.location.setCurrentText("Hot Rocks")
@@ -95,19 +95,19 @@ def test_the_editor_returns_what_was_typed(app, store):
 
 
 def test_the_editor_returns_nothing_for_an_untouched_card(app, store):
-    dialog = CardDialog(CabinAct(), "M1 - Monday", store.locations, store.staff)
+    dialog = CardForm(CabinAct(), "M1 - Monday", store.locations, store.staff)
     assert dialog.result_card is None
 
 
 def test_deleting_in_the_editor_returns_nothing(app, store):
-    dialog = CardDialog(store.week.card("M1", 0), "M1 - Monday", store.locations, store.staff)
+    dialog = CardForm(store.week.card("M1", 0), "M1 - Monday", store.locations, store.staff)
     dialog.delete_button.click()
     assert dialog.result_card is None
 
 
 def test_the_editor_keeps_the_card_id(app, store):
     original = store.week.card("M1", 0)
-    dialog = CardDialog(original, "M1 - Monday", store.locations, store.staff)
+    dialog = CardForm(original, "M1 - Monday", store.locations, store.staff)
     dialog.notes.setPlainText("bring spare rope")
     assert dialog.result_card.id == original.id
     assert dialog.result_card.notes == "bring spare rope"
@@ -233,6 +233,39 @@ def test_a_swap_moves_the_cards_and_reaches_the_sheet(window, store):
     window.jobs.stop()
     store.reload()
     assert store.week.card("M1", 3).id == "aaa111"
+
+
+def test_editing_a_card_zooms_in_and_saving_writes_it(window, store):
+    window.resize(1200, 800)
+    window.show()
+    window.edit_card("aaa111")
+    assert window.zoom.is_open and window.zoom.isVisible()
+    window.zoom.animation.setCurrentTime(window.zoom.animation.duration())
+    assert window.zoom.form.isVisible()
+    window.zoom.form.notes.setPlainText("bring spare rope")
+    window.zoom.form.accepted.emit()
+    assert store.week.card("M1", 0).notes == "bring spare rope"
+    window.zoom.animation.setCurrentTime(window.zoom.animation.duration())
+    assert not window.zoom.is_open and not window.zoom.isVisible()
+
+
+def test_cancelling_the_zoomed_card_writes_nothing(window, store):
+    window.show()
+    window.edit_card("aaa111")
+    window.zoom.form.notes.setPlainText("never mind")
+    window.zoom.form.rejected.emit()
+    window.zoom.animation.setCurrentTime(window.zoom.animation.duration())
+    assert store.week.card("M1", 0).notes != "never mind"
+    assert store.pending == []
+    assert not window.zoom.is_open
+
+
+def test_adding_a_card_through_the_zoom_places_it(window, store):
+    window.show()
+    window.add_card("M1", 3)
+    window.zoom.form.title.setText("Canoe trip")
+    window.zoom.form.accepted.emit()
+    assert store.week.card("M1", 3).title == "Canoe trip"
 
 
 def test_a_swap_with_itself_changes_nothing(window, store):

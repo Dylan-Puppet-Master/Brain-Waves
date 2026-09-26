@@ -198,6 +198,12 @@ class BoardView(QWidget):
         if widget is not None:
             self.board.ensureWidgetVisible(widget, SLOT_WIDTH // 2, SLOT_HEIGHT // 2)
 
+    def reveal_slot(self, cabin: str, column: int) -> None:
+        """Scroll until a slot, full or empty, can be seen whole."""
+        slot = self.slots.get((cabin, column))
+        if slot is not None:
+            self.board.ensureWidgetVisible(slot, 0, 0)
+
     def _show_clashing(self) -> None:
         marked = set(self.clashing)
         for identifier, widget in self.cards.items():

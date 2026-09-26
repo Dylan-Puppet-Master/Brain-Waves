@@ -30,7 +30,7 @@ from brainwaves.app.board import BoardView
 from brainwaves.app.comment_panel import CommentPanel
 from brainwaves.app.conflict_panel import ConflictPanel
 from brainwaves.app.dialogs import FolderDialog, RosterDialog
-from brainwaves.app.editor import CardDialog
+from brainwaves.app.editor import CardForm, CardZoom
 from brainwaves.app.sync import JobQueue
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.welcome import WelcomePage
@@ -101,6 +101,9 @@ class MainWindow(QMainWindow):
         self.board.add_requested.connect(self.add_card)
         self.board.subtitle_changed.connect(self.set_subtitle)
         self.board.overflow_requested.connect(self.add_overflow)
+        self.zoom = CardZoom(self.board)
+        self.zoom.saved.connect(self._save_edit)
+        self.editing: tuple[str, int] | None = None
         self.welcome = WelcomePage()
         self.welcome.acted.connect(self._welcome_action)
         self.pages = QStackedWidget()
@@ -335,19 +338,27 @@ class MainWindow(QMainWindow):
         self._edit(slot[0], slot[1], self.store.week.card(*slot))
 
     def _edit(self, cabin: str, column: int, card: CabinAct) -> None:
-        if self.store is None:
+        """Zoom into the card's slot and open its fields there."""
+        if self.store is None or self.zoom.is_open:
             return
-        dialog = CardDialog(
+        form = CardForm(
             card,
             f"{cabin} - {self._column_label(column)}",
             self.store.locations,
             self.store.staff,
-            self,
         )
-        if dialog.exec() != CardDialog.Accepted:
+        self.editing = (cabin, column)
+        self.board.reveal_slot(cabin, column)
+        self.zoom.open(form, lambda: self.board.slots.get((cabin, column)))
+
+    def _save_edit(self, card: CabinAct | None) -> None:
+        """Write what the open card now says, before the zoom back out lands on it."""
+        if self.store is None or self.editing is None:
             return
-        self.store.save_card(cabin, column, dialog.result_card)
-        self.selected_card = dialog.result_card.id if dialog.result_card else None
+        cabin, column = self.editing
+        self.editing = None
+        self.store.save_card(cabin, column, card)
+        self.selected_card = card.id if card else None
         self._draw_slots([(cabin, column)])
         self._push("Saving card...")
 
@@ -601,6 +612,7 @@ class MainWindow(QMainWindow):
         if self.store is None or not self.store.gone:
             return False
         title = self.store.week.id.title
+        self.zoom.dismiss()
         self.store = None
         self.selected_card = None
         self._stop_polling()
@@ -623,6 +635,8 @@ class MainWindow(QMainWindow):
         week_id, store = result
         if week_id != WeekId(self.state.session, self.state.week):
             return  # the week was changed again while this one was being read
+        if store is not self.store:
+            self.zoom.dismiss()  # a card half-edited belongs to the week that has gone
         if store is None:
             self.store = None
             self.sheet_label.setText("")

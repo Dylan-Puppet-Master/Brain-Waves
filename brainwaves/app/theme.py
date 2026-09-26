@@ -278,6 +278,21 @@ QLabel#cardTitle {{ font-size: 15px; font-weight: 700; }}
 QLabel#cardDescription {{ color: {c["MUTED"]}; font-size: 13px; }}
 QLabel#cardLocation {{ color: {c["INK"]}; font-size: 13px; font-weight: 600; }}
 QLabel#cardEmpty {{ color: {c["FAINT"]}; font-size: 26px; font-weight: 300; }}
+QFrame#cardEditor {{
+    background: {c["SURFACE"]};
+    border: 1px solid {c["LINE"]};
+    border-radius: 14px;
+}}
+QLineEdit#editorTitle {{
+    font-size: 22px;
+    font-weight: 700;
+    border: 1px solid transparent;
+    background: transparent;
+    padding: 4px 6px;
+}}
+QLineEdit#editorTitle:hover {{ border-color: {c["LINE"]}; }}
+QLineEdit#editorTitle:focus {{ border-color: {c["ACCENT"]}; background: {c["SURFACE"]}; }}
+QPushButton#danger {{ color: {c["DANGER"]}; }}
 QFrame#addCard {{
     background: transparent;
     border: 1px dashed {c["SUBTLE_LINE"]};
@@ -438,6 +453,11 @@ def board_bg() -> str:
 def board_cross() -> str:
     """The shade laid behind the row and column under the cursor."""
     return _colors()["BOARD_CROSS"]
+
+
+def surface() -> str:
+    """The colour of a card, light or dark to match the window around it."""
+    return _colors()["SURFACE"]
 
 
 def risk_color(risk_value: str) -> str:
