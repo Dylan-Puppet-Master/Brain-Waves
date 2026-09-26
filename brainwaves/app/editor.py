@@ -6,6 +6,7 @@ card now sits. Nothing floats over the rest of the window: the comments and the 
 where they were. The week's statistics open the same way, out of the corner of the board.
 """
 
+import math
 from dataclasses import replace
 
 from PySide6.QtCore import (
@@ -14,6 +15,7 @@ from PySide6.QtCore import (
     QPointF,
     QRect,
     QRectF,
+    QSize,
     QSizeF,
     Qt,
     QVariantAnimation,
@@ -71,9 +73,11 @@ MAX_WIDTH = 800
 DIM = 0.5
 BOARD_ZOOM = 1.25
 # The board goes out of focus as the card comes into it, by a Gaussian blur this wide in
-# screen pixels. It is worked out once, at full resolution, on the board as it looks fully
-# zoomed, so the blur that ends up on screen is never itself enlarged.
+# screen pixels. It is worked out once, on the board as it looks fully zoomed, but at a
+# fraction of the screen's resolution: a blur this wide leaves no detail that finer pixels
+# could hold, so scaled back up it is the same to within a few shades, and far quicker.
 BLUR_RADIUS = 14
+BLUR_SCALE = 0.5
 # How far into the zoom the blur starts to show. The blurred board covers only what can be
 # seen from here on, which keeps it quick to make.
 BLUR_FROM = 0.3
@@ -368,14 +372,17 @@ class CardZoom(QWidget):
         Only the part of the board in view once the blur starts to show is blurred:
         `blur_area` is that part, in the board's own coordinates.
         """
-        ratio = self.backdrop.devicePixelRatio()
+        ratio = self.backdrop.devicePixelRatio() * BLUR_SCALE
         _, scale = self._camera(1.0)
         area = self._in_view(BLUR_FROM).united(self._in_view(1.0)).adjusted(-8, -8, 8, 8)
         self.blur_area = area.intersected(
             QRectF(QPointF(0, 0), self.backdrop.deviceIndependentSize())
         )
+        # Rounded up, so the blurred board covers the sharp one right to its edges.
+        size = self.blur_area.size() * scale * ratio
         frame = QImage(
-            (self.blur_area.size() * scale * ratio).toSize(), QImage.Format_ARGB32_Premultiplied
+            QSize(math.ceil(size.width()), math.ceil(size.height())),
+            QImage.Format_ARGB32_Premultiplied,
         )
         frame.setDevicePixelRatio(ratio)
         frame.fill(QColor(board_bg()))
@@ -421,29 +428,35 @@ class CardZoom(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.SmoothPixmapTransform)
         painter.setRenderHint(QPainter.Antialiasing)
-        painter.fillRect(self.rect(), QColor(board_bg()))
         current = self._current()
+        focus = (self.progress - BLUR_FROM) / (1.0 - BLUR_FROM)
+        blurred = not self.blurred.isNull() and focus > 0
         # The board rushes past as the card comes closer, and blurs as it goes. The blurred
         # board was taken fully zoomed, so it is carried along with the sharp one, and meets
-        # the screen exactly, unstretched, when the zoom is done.
-        if not self.backdrop.isNull():
+        # the screen exactly, unstretched, when the zoom is done. Once it is fully in focus
+        # it hides the sharp board entirely, which need not be drawn.
+        if self.backdrop.isNull():
+            painter.fillRect(self.rect(), QColor(board_bg()))
+        elif not (blurred and focus >= 1):
             shift, scale = self._camera(self.progress)
             painter.save()
             painter.translate(shift)
             painter.scale(scale, scale)
             painter.drawPixmap(QPointF(0, 0), self.backdrop)
             painter.restore()
-        focus = (self.progress - BLUR_FROM) / (1.0 - BLUR_FROM)
-        if not self.blurred.isNull() and focus > 0:
+        if blurred:
             shift, scale = self._camera(self.progress)
             _, end_scale = self._camera(1.0)
             painter.save()
-            painter.setOpacity(focus)
+            painter.setOpacity(min(1.0, focus))
             painter.translate(shift)
             painter.scale(scale, scale)
             painter.translate(self.blur_area.topLeft())
             painter.scale(1 / end_scale, 1 / end_scale)
-            painter.drawImage(QPointF(0, 0), self.blurred)
+            # Stretched by hand: left to itself, Qt draws a picture coarser than the screen
+            # at its size in pixels, a corner of where it belongs.
+            size = self.blurred.deviceIndependentSize()
+            painter.drawImage(QRectF(QPointF(0, 0), size), self.blurred, self.blurred.rect())
             painter.restore()
         painter.fillRect(self.rect(), QColor(0, 0, 0, int(255 * DIM * self.progress)))
         if self.form is not None and self.form.isVisible():
