@@ -27,7 +27,12 @@ def risk_chip(risk_value: str) -> QLabel:
 
 
 def elided(label: QLabel, text: str, width: int, lines: int = 1) -> None:
-    """Put `text` on a label, cut to fit `lines` rows of `width` pixels."""
+    """Put `text` on a label, cut to fit `lines` rows of `width` pixels.
+
+    The label is polished first, so it is measured in the font the stylesheet gives it
+    rather than the smaller default it has until it is shown.
+    """
+    label.ensurePolished()
     metrics = label.fontMetrics()
     if lines == 1:
         label.setText(metrics.elidedText(text, Qt.ElideRight, width))
@@ -46,9 +51,9 @@ def elided(label: QLabel, text: str, width: int, lines: int = 1) -> None:
         rows.append(current)
     joined = "\n".join(rows)
     if len(rows) == lines and len(joined) < len(text):
-        rows[-1] = metrics.elidedText(rows[-1] + " " + text[len(joined) :], Qt.ElideRight, width)
-        joined = "\n".join(rows)
-    label.setText(joined)
+        rows[-1] = rows[-1] + " " + text[len(joined) :]
+    # A row may still be one word too long to fit, and is cut rather than spilt.
+    label.setText("\n".join(metrics.elidedText(row, Qt.ElideRight, width) for row in rows))
 
 
 AGO = ((3600, 60, "minute"), (86400, 3600, "hour"), (7 * 86400, 86400, "day"))

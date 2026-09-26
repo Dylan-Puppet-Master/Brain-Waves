@@ -811,3 +811,14 @@ def test_a_week_deleted_in_drive_is_taken_down(window, store):
     assert store.week.id not in window.stores
     assert window.pages.currentWidget() is window.welcome
     assert not window.poll.isActive()
+
+
+def test_a_long_title_stops_short_of_the_badges_beside_it(app):
+    card = CabinAct(title="Extraordinarily longwindedtitlewithoutspaces here", risk=Risk.YELLOW)
+    widget = CardWidget("M1", 0, card, comments=3)
+    widget.show()
+    QApplication.processEvents()
+    title = widget.findChild(QLabel, "cardTitle")
+    badge = widget.findChild(QLabel, "riskChip")
+    widest = max(title.fontMetrics().horizontalAdvance(row) for row in title.text().split("\n"))
+    assert title.x() + widest <= badge.x()

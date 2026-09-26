@@ -7,7 +7,15 @@ which is the move the old spreadsheet took six steps to make.
 import shiboken6
 from PySide6.QtCore import QMimeData, QPoint, Qt, Signal
 from PySide6.QtGui import QDrag
-from PySide6.QtWidgets import QApplication, QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from brainwaves.app.chips import describe
 from brainwaves.app.theme import CARD_HEIGHT, CARD_WIDTH, SLOT_PADDING, restyle
@@ -17,6 +25,7 @@ from brainwaves.sheets.staff import PERSON, StaffLists
 
 MIME = "application/x-brainwaves-card"
 TEXT_WIDTH = CARD_WIDTH - 24
+HEADER_SPACING = 6
 FLAGS = (
     ("van", "Van"),
     ("armory", "Armory"),
@@ -59,15 +68,24 @@ class CardWidget(QFrame):
         layout.setContentsMargins(12, 10, 12, 10)
         layout.setSpacing(6)
 
+        badges = [risk_chip(self.card.risk.value)]
+        if comments:
+            badges.append(chip(f"{comments}", "commentBadge", "Open comments"))
+        header = QHBoxLayout()
+        header.setSpacing(HEADER_SPACING)
+        # The title gets whatever the badges beside it leave, measured rather than guessed,
+        # so a long title is cut short instead of running underneath them.
+        room = TEXT_WIDTH
+        for badge in badges:
+            badge.ensurePolished()
+            room -= badge.sizeHint().width() + HEADER_SPACING
         title = QLabel()
         title.setObjectName("cardTitle")
-        elided(title, self.card.title or "Untitled", TEXT_WIDTH - 46, lines=2)
-        header = QHBoxLayout()
-        header.setSpacing(5)
+        title.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        elided(title, self.card.title or "Untitled", room, lines=2)
         header.addWidget(title, 1)
-        header.addWidget(risk_chip(self.card.risk.value), 0, Qt.AlignTop)
-        if comments:
-            header.addWidget(chip(f"{comments}", "commentBadge", "Open comments"), 0, Qt.AlignTop)
+        for badge in badges:
+            header.addWidget(badge, 0, Qt.AlignTop)
         layout.addLayout(header)
 
         description = QLabel()
