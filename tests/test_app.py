@@ -219,6 +219,11 @@ def window(app, tmp_path, monkeypatch, store):
     made._draw()
     yield made
     made.jobs.stop()
+    # Results still on their way back are delivered now, while the data folder is the
+    # test's own, rather than to whichever test next lets events through.
+    QApplication.processEvents()
+    made.pick.stop()
+    made._stop_polling()
 
 
 def test_the_window_draws_the_week_it_is_given(window, store):

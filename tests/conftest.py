@@ -1,6 +1,10 @@
 import os
+import tempfile
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+# No test may reach the real saved sign-in or state.json. A test that sets its own folder
+# puts this one back afterwards, so anything that arrives late still lands here.
+os.environ["BRAINWAVES_DATA"] = tempfile.mkdtemp(prefix="brainwaves-tests-")
 
 import pytest
 
