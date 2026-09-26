@@ -8,6 +8,9 @@ colour sets below, matching whatever the operating system is set to, and follows
 the system theme changes while the window is open.
 """
 
+import tempfile
+from pathlib import Path
+
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor, QFont, QGuiApplication, QPalette
 from PySide6.QtWidgets import QApplication, QWidget
@@ -58,6 +61,8 @@ _LIGHT = {
     "SUBTLE_LINE": "#c3ccd6",
     "CARD_HOVER_LINE": "#b8c3cf",
     "CHIP_TEXT": "#ffffff",
+    "CHECK_LINE": "#8c99a6",
+    "CHECK_MARK": "#ffffff",
 }
 
 _DARK = {
@@ -72,7 +77,7 @@ _DARK = {
     "ACCENT_SOFT": "#153834",
     "ACCENT_DARK": "#5eead4",
     "BOARD_BG": "#181e25",
-    "BOARD_CROSS": "#2a333d",
+    "BOARD_CROSS": "#35404c",
     "WARN_BG": "#3a2d14",
     "WARN_INK": "#e8b34d",
     "CLASH": "#ff6b6b",
@@ -81,6 +86,8 @@ _DARK = {
     "SUBTLE_LINE": "#3a4452",
     "CARD_HOVER_LINE": "#46505c",
     "CHIP_TEXT": "#ffffff",
+    "CHECK_LINE": "#7d8a98",
+    "CHECK_MARK": "#14191f",
 }
 
 _VILLAGE_DARK = {
@@ -175,6 +182,19 @@ QComboBox QAbstractItemView {{
     outline: none;
 }}
 QCheckBox {{ spacing: 7px; }}
+QCheckBox::indicator {{
+    width: 14px;
+    height: 14px;
+    border: 1.5px solid {c["CHECK_LINE"]};
+    border-radius: 4px;
+    background: {c["SURFACE"]};
+}}
+QCheckBox::indicator:hover {{ border-color: {c["ACCENT"]}; }}
+QCheckBox::indicator:checked {{
+    border-color: {c["ACCENT"]};
+    background: {c["ACCENT"]};
+    image: url("{_check_mark(c["CHECK_MARK"])}");
+}}
 
 QScrollArea {{ border: none; background: {c["SUNKEN"]}; }}
 QWidget#boardView, QWidget#boardView QScrollArea {{ background: {c["BOARD_BG"]}; }}
@@ -407,6 +427,18 @@ QListWidget {{ background: {c["SURFACE"]}; border: 1px solid {c["LINE"]}; border
 QListWidget::item {{ padding: 5px 8px; }}
 QListWidget::item:selected {{ background: {c["ACCENT_SOFT"]}; color: {c["INK"]}; }}
 """
+
+
+def _check_mark(color: str) -> str:
+    """A check mark in this colour, as a file: a stylesheet can only show an image by path."""
+    path = Path(tempfile.gettempdir()) / f"brainwaves-check-{color.lstrip('#')}.svg"
+    if not path.exists():
+        path.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 14 14">'
+            f'<path d="M3 7.2l2.6 2.6L11 4.4" fill="none" stroke="{color}" '
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+        )
+    return path.as_posix()
 
 
 def apply_theme(app: QApplication) -> None:
