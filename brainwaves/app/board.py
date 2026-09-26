@@ -21,12 +21,12 @@ from PySide6.QtWidgets import (
 
 from brainwaves.app.card import AddCard, CardWidget, SlotWidget
 from brainwaves.app.theme import (
-    BOARD_BG,
-    BOARD_CROSS,
     CABIN_WIDTH,
     CARD_HEIGHT,
     CARD_WIDTH,
     SLOT_PADDING,
+    board_bg,
+    board_cross,
     restyle,
     village_pair,
 )
@@ -422,8 +422,8 @@ class Ground(QWidget):
     def paintEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """The background, then the bands."""
         painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor(BOARD_BG))
-        band = QColor(BOARD_CROSS)
+        painter.fillRect(self.rect(), QColor(board_bg()))
+        band = QColor(board_cross())
         if self.row is not None:
             width = self.width_in_slots * SLOT_WIDTH or self.width()
             painter.fillRect(0, self.row * SLOT_HEIGHT, width, SLOT_HEIGHT, band)

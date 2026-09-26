@@ -400,9 +400,9 @@ def test_a_long_job_reports_its_step(window):
 
 def test_the_welcome_panel_draws_no_box_around_its_text(app):
     """QLabel is a QFrame, so a plain `QFrame` rule puts a border round every label."""
-    from brainwaves.app.theme import STYLESHEET
+    from brainwaves.app.theme import current_stylesheet
 
-    for rule in STYLESHEET.split("}"):
+    for rule in current_stylesheet().split("}"):
         if "border:" in rule and "QFrame" in rule:
             assert "#" in rule.split("{")[0], rule
 

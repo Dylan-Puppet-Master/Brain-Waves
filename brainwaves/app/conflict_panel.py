@@ -17,8 +17,8 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from brainwaves.app.theme import clash_color
 from brainwaves.conflicts import HERO
-from brainwaves.palette import CLASH
 
 COLUMNS = ("Day", "Clash", "Cabins")
 NOTHING = "Nothing clashes. Every cabin has its own place and its own HEROES."
@@ -72,7 +72,7 @@ class ConflictPanel(QWidget):
                 item = QTableWidgetItem(text)
                 item.setToolTip(conflict.summary)
                 if column == 1 and conflict.kind == HERO:
-                    item.setForeground(QColor(CLASH))
+                    item.setForeground(QColor(clash_color()))
                 self.table.setItem(row, column, item)
         self.table.blockSignals(False)
         self._choose(chosen)
