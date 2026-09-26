@@ -30,13 +30,13 @@ def retrying(call, attempts: int = ATTEMPTS, pause: float = FIRST_PAUSE):
 
 def is_transient(error: Exception) -> bool:
     """Whether an error says to try again rather than that the request was wrong."""
-    status = _status(error)
+    status = http_status(error)
     if status is not None:
         return status in TRANSIENT_CODES
     return isinstance(error, OSError)  # a dropped connection or a timeout
 
 
-def _status(error: Exception) -> int | None:
+def http_status(error: Exception) -> int | None:
     """The HTTP status, however the library that raised it happens to carry one."""
     for holder, name in (("response", "status_code"), ("resp", "status")):
         code = getattr(getattr(error, holder, None), name, None)

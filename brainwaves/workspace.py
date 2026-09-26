@@ -83,21 +83,25 @@ class Workspace:
         """Open the folder's sheet for a week, or None if it has none.
 
         The sheet found last time is tried first, which saves listing the folder. If it has
-        gone, or has been renamed to some other week, the folder is listed again.
+        gone, or has been renamed to some other week, the folder is listed again. Drive is
+        asked rather than Sheets, because Sheets still opens a spreadsheet in the trash.
         """
         known = self._weeks.get(folder_id, {}).get(week_id)
         if known is not None:
-            workbook = SheetsWorkbook(self.http, known.id)
             try:
-                still_there = WeekId.parse(workbook.title) == week_id
-            except Exception:  # noqa: BLE001 - moved or deleted since; look again
-                still_there = False
-            if still_there:
-                return self.read(workbook, week_id, report=report)
+                name = self.drive.live_name(known.id)
+            except Exception:  # noqa: BLE001 - look again
+                name = None
+            if name is not None and WeekId.parse(name) == week_id:
+                return self.read(SheetsWorkbook(self.http, known.id, name), week_id, report=report)
         item = self.weeks(folder_id).get(week_id)
         if item is None:
             return None
         return self.open(item.id, week_id, report=report)
+
+    def still_there(self, file_id: str) -> bool:
+        """Whether a week sheet is still in Drive and out of the trash."""
+        return self.drive.live_name(file_id) is not None
 
     def open(self, file_id: str, week_id: WeekId, report=None) -> WeekSheet:
         """Read a week sheet into a Week, rebuilding any tab it has lost."""

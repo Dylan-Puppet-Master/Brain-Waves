@@ -272,6 +272,7 @@ class MainWindow(QMainWindow):
             # Seen already this run: show it as it was, and read what has changed since.
             self._opened((week_id, self.stores[week_id]))
             self._poll()
+            self._poll_comments()  # which also sees whether the sheet has been deleted since
             return
         if self.store is None:
             self.welcome.show_working(f"Opening {week_id.title}")
@@ -566,6 +567,8 @@ class MainWindow(QMainWindow):
 
     def _job_done(self, name: str, result) -> None:
         self.running.discard(name)
+        if name in {"comments", "reload"} and self._drop_gone():
+            return
         if name == "signin":
             self._signed_in(result)
         elif name == "open":
@@ -589,6 +592,25 @@ class MainWindow(QMainWindow):
         if name == "reload" or (name == "flush" and self.comments_pending):
             self.comments_pending = False
             self._draw_changes()
+
+    def _drop_gone(self) -> bool:
+        """Forget every week whose sheet has been deleted. True if it was the one on show."""
+        gone = [week_id for week_id, store in self.stores.items() if store.gone]
+        for week_id in gone:
+            del self.stores[week_id]
+        if self.store is None or not self.store.gone:
+            return False
+        title = self.store.week.id.title
+        self.store = None
+        self.selected_card = None
+        self._stop_polling()
+        self.sheet_label.setText("")
+        self._show_welcome(
+            f"{title} has been deleted from Google Drive.",
+            "Start New Week",
+            "If that was a mistake, restore it from the Drive trash and open the week again.",
+        )
+        return True
 
     def _draw_heroes(self) -> None:
         """Redraw the cards with HERO chips, which the staff lists have just said more about."""

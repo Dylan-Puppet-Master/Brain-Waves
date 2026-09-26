@@ -767,3 +767,14 @@ def test_leaving_the_board_clears_the_shading(app, store):
     board.cross(1, 1)
     board.leaveEvent(QEvent(QEvent.Leave))
     assert (board.grid_body.row, board.grid_body.column) == (None, None)
+
+
+def test_a_week_deleted_in_drive_is_taken_down(window, store):
+    window.stores[store.week.id] = store
+    store.workspace.drive.trashed = True
+    store.reload_comments()
+    window._job_done("comments", None)
+    assert window.store is None
+    assert store.week.id not in window.stores
+    assert window.pages.currentWidget() is window.welcome
+    assert not window.poll.isActive()

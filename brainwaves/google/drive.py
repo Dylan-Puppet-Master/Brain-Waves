@@ -9,7 +9,7 @@ from all of them.
 
 from dataclasses import dataclass
 
-from brainwaves.google.retry import retrying
+from brainwaves.google.retry import http_status, retrying
 from brainwaves.model import WeekId
 
 FOLDER_MIME = "application/vnd.google-apps.folder"
@@ -115,6 +115,23 @@ class Drive:
         """One file's name."""
         request = self.service.files().get(fileId=file_id, fields="name", supportsAllDrives=True)
         return retrying(request.execute).get("name", "")
+
+    def live_name(self, file_id: str) -> str | None:
+        """A file's name, or None if it has been deleted or put in the trash.
+
+        Sheets goes on reading and writing a spreadsheet in the trash as if nothing had
+        happened, so Drive is the only one that can say a week sheet has gone.
+        """
+        request = self.service.files().get(
+            fileId=file_id, fields="name, trashed", supportsAllDrives=True
+        )
+        try:
+            found = retrying(request.execute)
+        except Exception as error:
+            if http_status(error) == 404:
+                return None
+            raise
+        return None if found.get("trashed") else found.get("name", "")
 
     def _list(self, query: str, folders: bool = True, shared: bool = False) -> list[DriveItem]:
         """Run a Drive query across everything the user can see."""

@@ -60,6 +60,8 @@ class BoardStore:
         # the layout its formatting was last put in for, or None if not known.
         self._support = sheet.support
         self._support_shape: tuple | None = None
+        # Set once Drive says the sheet has been deleted or put in the trash.
+        self.gone = False
 
     @property
     def workbook(self):
@@ -85,6 +87,8 @@ class BoardStore:
         """Send every queued change, oldest first. Runs off the UI thread."""
         while True:
             with self._lock:
+                if self.gone:
+                    self.pending.clear()
                 if not self.pending:
                     return
                 job = self.pending.pop(0)
@@ -132,8 +136,16 @@ class BoardStore:
                 self._queue_cards(nameless)
 
     def reload_comments(self) -> None:
-        """Read the Drive threads and match them to cards."""
+        """Check the sheet is still there, then read the Drive threads and match them to cards.
+
+        Sheets carries on reading and writing a spreadsheet in the trash, so without asking
+        Drive a deleted week would go on syncing with nobody. This rides on the comments'
+        slower beat, which talks to Drive anyway.
+        """
         try:
+            if not self.workspace.still_there(self.file_id):
+                self.gone = True
+                return
             threads = self.workspace.comments.list(self.file_id)
         except Exception:  # noqa: BLE001 - a board without comments still works
             return

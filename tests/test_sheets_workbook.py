@@ -161,10 +161,16 @@ class CountingDrive:
     def __init__(self, found):
         self.found = found
         self.listed = 0
+        self.trashed: set[str] = set()
 
     def week_sheets(self, folder_id):
         self.listed += 1
-        return dict(self.found)
+        return {week: item for week, item in self.found.items() if item.id not in self.trashed}
+
+    def live_name(self, file_id):
+        if file_id in self.trashed:
+            return None
+        return next((item.name for item in self.found.values() if item.id == file_id), "old name")
 
 
 def workspace_with(found):
@@ -200,6 +206,18 @@ def test_a_sheet_renamed_to_another_week_is_looked_for_again():
     workspace._weeks["folder"] = {week: DriveItem("file-1", "old name", False)}
     assert workspace.open_week("folder", week) is None
     assert workspace.drive.listed == 1
+
+
+def test_a_sheet_in_the_trash_is_not_opened_again():
+    """Sheets still opens a trashed spreadsheet, so Drive has to be asked."""
+    from brainwaves.google.drive import DriveItem
+    from brainwaves.model import WeekId
+
+    week = WeekId(2, 1)
+    workspace = workspace_with({week: DriveItem("file-1", "Cabin Act Sorting - S2W1", False)})
+    assert workspace.open_week("folder", week) == ("file-1", week)
+    workspace.drive.trashed.add("file-1")
+    assert workspace.open_week("folder", week) is None
 
 
 def test_the_staff_lists_are_one_request_a_document():

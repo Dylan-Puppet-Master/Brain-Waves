@@ -469,3 +469,15 @@ def test_closing_a_thread_is_one_call_per_thread(tmp_path, week):
     store.flush()
     assert replies == []
     assert store.comments[0].resolved
+
+
+def test_a_week_deleted_in_drive_stops_syncing(tmp_path, week):
+    """Sheets goes on writing to a spreadsheet in the trash; nothing here may."""
+    store = store_for(tmp_path, week)
+    store.workspace.drive.trashed = True
+    store.reload_comments()
+    assert store.gone
+    store.save_card("O1", 1, CabinAct(id="ddd444", title="Canoe"))
+    store.flush()
+    assert not store.busy
+    assert "Canoe" not in (tmp_path / "Board.csv").read_text()

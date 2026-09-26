@@ -119,6 +119,13 @@ so `google/retry.py` tries again after a longer wait each time. Only what can sa
 repeated goes through it: reading anything, writing cells, resolving a thread. Posting a
 comment does not, because a second attempt would post it twice.
 
+**Only Drive knows a sheet was deleted.** The Sheets API goes on reading and writing a
+spreadsheet in the Drive trash as if nothing had happened, so polling alone would sync a
+deleted week forever. The comment poll, which talks to Drive anyway, asks Drive first whether
+the file is still there and out of the trash; if not, the week is dropped and its unsent
+writes with it. Reopening a week asks Drive too, rather than trusting the sheet it found last
+time.
+
 **A timer never raises a dialog.** A failed poll writes one line in the status bar and is
 tried again; only something a person asked for — opening a week, creating one, saving —
 is worth interrupting them for. At two seconds, the alternative is a wall of dialogs the

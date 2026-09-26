@@ -79,6 +79,7 @@ class FakeDrive:
         self.root = Path(root)
         self.frozen = False
         self.asked = 0
+        self.trashed = False
 
     def revision(self, file_id):
         self.asked += 1
@@ -86,6 +87,9 @@ class FakeDrive:
             return "unchanged"
         blob = b"".join(sorted(path.read_bytes() for path in self.root.glob("*.csv")))
         return hashlib.sha1(blob).hexdigest()
+
+    def live_name(self, file_id):
+        return None if self.trashed else FakeWorkbook.title
 
 
 class FakeWorkspace:
@@ -101,6 +105,9 @@ class FakeWorkspace:
             categories={"Counselor": 22, "VL": 4},
             skills={"Canopy Tour": 14, "Low Ropes": 7, "Lifeguard": 1},
         )
+
+    def still_there(self, file_id):
+        return self.drive.live_name(file_id) is not None
 
     def read(self, workbook, week_id, report=None):
         self.reads += 1
