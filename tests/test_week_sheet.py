@@ -36,6 +36,8 @@ def test_a_card_block_holds_every_field(week):
     assert block[layout.LOCATION][layout.FLAG_VALUE_OFFSET] == "TRUE"
     assert block[layout.NOTES][layout.FLAG_VALUE_OFFSET] == "FALSE"
     assert block[layout.DESCRIPTION][layout.FLAG_VALUE_OFFSET] == "Y"
+    assert block[layout.HEROES][layout.FLAG_LABEL_OFFSET] == "Level 2 on Ground"
+    assert block[layout.HEROES][layout.FLAG_VALUE_OFFSET] == "TRUE"
     assert block[layout.HEROES][layout.VALUE_OFFSET] == "Dylan, Vic"
 
 

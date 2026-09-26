@@ -17,7 +17,13 @@ from brainwaves.sheets.staff import PERSON, StaffLists
 
 MIME = "application/x-brainwaves-card"
 TEXT_WIDTH = CARD_WIDTH - 24
-FLAGS = (("van", "Van"), ("armory", "Armory"), ("picnic", "Picnic"), ("food", "Food"))
+FLAGS = (
+    ("van", "Van"),
+    ("armory", "Armory"),
+    ("picnic", "Picnic"),
+    ("food", "Food"),
+    ("level_two", "Level 2 on Ground"),
+)
 
 
 class CardWidget(QFrame):

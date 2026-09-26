@@ -27,7 +27,7 @@ same:
  │ Jana   │ Materials   │ rope, blindfolds       │ Armory   │ ☐     │          │
  │        │ Location    │ Low Ropes 1            │ Picnic   │ ☐     │          │
  │        │ Notes       │ Needs a facilitator    │ Food     │ ☐     │          │
- │        │ HEROES      │ Dylan, Vic             │          │       │          │
+ │        │ HEROES      │ Dylan, Vic             │ Level 2… │ ☐     │          │
  └────────┴─────────────┴────────────────────────┴──────────┴───────┴──────────┘
 ```
 
@@ -36,7 +36,7 @@ same:
   plainly either way, so the cell reads the same to a person as it always did.
 - **Location** has a dropdown drawn from the Locations tab.
 - **Risk** has a dropdown of `R`, `Y`, `G` and `N`, and colours itself.
-- **Van**, **Armory**, **Picnic** and **Food** are checkboxes.
+- **Van**, **Armory**, **Picnic**, **Food** and **Level 2 on Ground** are checkboxes.
 - The sixth column of each block holds the card's id and is hidden. It is what keeps a
   card's comments with it when the card is moved. Do not delete it.
 
@@ -64,8 +64,8 @@ from the week it was made after.
 
 Derived, never edited. Brain Waves rewrites it whenever the board changes, and it lists,
 for each weekday, every cabin act that asks anything of staff outside the cabin: which
-HEROES, and whether it needs a van, the armory, a picnic or other food. This is the tab the
-Puppet Master reads.
+HEROES, and whether it needs a van, the armory, a picnic, other food or a Level 2 on
+Ground. This is the tab the Puppet Master reads.
 
 ## The template
 

@@ -37,6 +37,7 @@ def week(cabins):
             armory=False,
             picnic=True,
             food=False,
+            level_two=True,
             heroes=("Dylan", "Vic"),
         ),
         ("M1", 3): CabinAct(id="bbb222", title="Tie dye", location="Craft Shack 1"),

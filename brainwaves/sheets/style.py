@@ -354,6 +354,8 @@ def _cell_format(row_offset: int, position: int) -> dict:
             "backgroundColor": sheets_color(PANEL if header else SURFACE),
             "horizontalAlignment": "RIGHT",
             "verticalAlignment": "TOP",
+            # "Level 2 on Ground" is too long for the flag label column, so it wraps.
+            "wrapStrategy": "WRAP",
             "padding": dict(PAD),
             "textFormat": _text(9, FAINT),
         }
@@ -595,7 +597,7 @@ def support_requests(view, tab_id: int) -> list[dict]:
         ),
         _rows(tab_id, 0, 1, TITLE_ROW_HEIGHT),
     ]
-    widths = (150, 250, 160, 50, 220, 60, 70, 60, 60)
+    widths = (150, 250, 160, 50, 220, 60, 70, 60, 60, 80)
     for index, width in enumerate(widths[:columns]):
         requests.append(_column_width(tab_id, index, width))
     for row in view.day_rows:

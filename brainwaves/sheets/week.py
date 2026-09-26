@@ -79,6 +79,7 @@ def parse_card(board: Table, cabin_index: int, column: int) -> CabinAct | None:
         armory=flag(layout.MATERIALS),
         picnic=flag(layout.LOCATION),
         food=flag(layout.NOTES),
+        level_two=flag(layout.HEROES),
     )
     return None if card.is_blank else card
 
@@ -115,7 +116,7 @@ def card_block(card: CabinAct | None) -> Table:
         card.notes,
         join_list(card.heroes),
     )
-    flags = (card.van, card.risk.value, card.armory, card.picnic, card.food, "")
+    flags = (card.van, card.risk.value, card.armory, card.picnic, card.food, card.level_two)
     block = [
         [label, value, flag_label, _flag_text(flag), ""]
         for label, value, flag_label, flag in zip(

@@ -14,7 +14,18 @@ from brainwaves.model import DAY_COLUMNS, Week
 from brainwaves.names import join_list
 from brainwaves.sheets.source import Table
 
-HEADER = ["Cabin", "Activity", "Location", "Risk", "HEROES", "Van", "Armory", "Picnic", "Food"]
+HEADER = [
+    "Cabin",
+    "Activity",
+    "Location",
+    "Risk",
+    "HEROES",
+    "Van",
+    "Armory",
+    "Picnic",
+    "Food",
+    "Level 2 on Ground",
+]
 TICK = "✓"
 NOTHING = "Nothing needed"
 
@@ -49,6 +60,7 @@ def render_support(week: Week) -> SupportView:
                 _tick(card.armory),
                 _tick(card.picnic),
                 _tick(card.food),
+                _tick(card.level_two),
             ]
             for cabin, card in week.day_cards(column)
             if card.needs_support

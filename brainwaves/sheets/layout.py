@@ -15,7 +15,7 @@ the card's id and is hidden, so a card keeps its comments when it is moved.
   │ Jana   │ Materials   │ rope, blindfolds       │ Armory   │ ☐     │          │
   │        │ Location    │ Low Ropes 1            │ Picnic   │ ☐     │          │
   │        │ Notes       │ Needs a facilitator    │ Food     │ ☐     │          │
-  │        │ HEROES      │ Dylan, Vic             │          │       │          │
+  │        │ HEROES      │ Dylan, Vic             │ Level 2… │ ☐     │          │
   └────────┴─────────────┴────────────────────────┴──────────┴───────┴──────────┘
 """
 
@@ -36,9 +36,9 @@ ID_OFFSET = 4
 TITLE, DESCRIPTION, MATERIALS, LOCATION, NOTES, HEROES = range(CARD_ROWS)
 
 FIELD_LABELS = ("Activity", "Description", "Materials", "Location", "Notes", "HEROES")
-FLAG_LABELS = ("Van", "Risk", "Armory", "Picnic", "Food", "")
+FLAG_LABELS = ("Van", "Risk", "Armory", "Picnic", "Food", "Level 2 on Ground")
 
-CHECKBOX_ROWS = (TITLE, MATERIALS, LOCATION, NOTES)
+CHECKBOX_ROWS = (TITLE, MATERIALS, LOCATION, NOTES, HEROES)
 
 LABEL_OFFSET = 0
 VALUE_OFFSET = 1

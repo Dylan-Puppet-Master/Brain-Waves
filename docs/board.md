@@ -28,7 +28,7 @@ landed.
 | Dark line | The location |
 | `R` `Y` `G` `N` badge | Risk: red needs director sign-off, yellow is risk-managed, green needs a trained facilitator, none needs neither |
 | Amber number | Open comments |
-| Grey chips | Van, Armory, Picnic, Food, when the activity needs them |
+| Grey chips | Van, Armory, Picnic, Food, Level 2 on Ground, when the activity needs them |
 | Teal chips | The HEROES asked for. A filled chip is a person by name; an outlined one is a category or a skill, meaning anyone who fits |
 
 Hover a card to see everything, materials and notes included.

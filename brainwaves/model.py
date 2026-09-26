@@ -99,6 +99,7 @@ class CabinAct:
     armory: bool = False
     picnic: bool = False
     food: bool = False
+    level_two: bool = False
     heroes: tuple[str, ...] = ()
 
     @property
@@ -111,7 +112,9 @@ class CabinAct:
     @property
     def needs_support(self) -> bool:
         """Whether the card asks anything of staff outside the cabin."""
-        return bool(self.heroes) or self.van or self.armory or self.picnic or self.food
+        return bool(self.heroes) or any(
+            (self.van, self.armory, self.picnic, self.food, self.level_two)
+        )
 
 
 @dataclass(frozen=True)

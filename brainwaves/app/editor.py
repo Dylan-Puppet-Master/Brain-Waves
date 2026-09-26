@@ -29,6 +29,7 @@ FLAGS = (
     ("armory", "Armory"),
     ("picnic", "Picnic"),
     ("food", "Food (not a picnic)"),
+    ("level_two", "Level 2 on Ground"),
 )
 
 
