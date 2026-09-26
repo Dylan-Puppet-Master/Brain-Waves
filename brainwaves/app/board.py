@@ -109,7 +109,9 @@ class BoardView(QWidget):
         bottom.addWidget(self.board, 1)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(10, 8, 10, 10)
-        layout.setSpacing(4)
+        # The headings meet the board with no gap, so the column band runs unbroken from a
+        # day's name down through its cards. The headings keep their own space beneath.
+        layout.setSpacing(0)
         layout.addLayout(top)
         layout.addLayout(bottom, 1)
 
