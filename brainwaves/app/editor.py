@@ -3,13 +3,14 @@
 Opening a card flies the board towards it, the way a camera would, until the card fills the
 middle of the board and its fields are there to edit. Closing flies back out to wherever the
 card now sits. Nothing floats over the rest of the window: the comments and the toolbar stay
-where they were.
+where they were. The week's statistics open the same way, out of the corner of the board.
 """
 
 from dataclasses import replace
 
 from PySide6.QtCore import (
     QEasingCurve,
+    QPoint,
     QPointF,
     QRect,
     QRectF,
@@ -40,13 +41,14 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QPushButton,
+    QSizePolicy,
     QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from brainwaves.app.chips import ChipEditor
-from brainwaves.app.theme import SLOT_PADDING, board_bg, risk_color, surface
+from brainwaves.app.theme import board_bg, risk_color, surface
 from brainwaves.model import CabinAct, Risk
 from brainwaves.names import join_list, split_list
 from brainwaves.palette import RISK_LABELS
@@ -60,7 +62,7 @@ FLAGS = (
 )
 
 ZOOM_MS = 320
-# How far the open card stays from the edges of the board, and how big it may grow.
+# How far the open card stays from the edges of the board, and how wide it may grow.
 MARGIN = 36
 MAX_WIDTH = 800
 # How much the board behind the open card is dimmed, at most, and how far the board itself
@@ -75,6 +77,9 @@ BLUR_RADIUS = 14
 # How far into the zoom the blur starts to show. The blurred board covers only what can be
 # seen from here on, which keeps it quick to make.
 BLUR_FROM = 0.3
+# The face the zoom grows out of fades into the open form between these magnifications.
+FADE_FROM = 1.3
+FADE_TO = 2.6
 
 
 class CardForm(QFrame):
@@ -92,6 +97,7 @@ class CardForm(QFrame):
         self.card = card
         self.deleted = False
         self.setObjectName("cardEditor")
+        self.setMaximumWidth(MAX_WIDTH)
 
         where_label = QLabel(where.upper())
         where_label.setObjectName("sectionTitle")
@@ -112,6 +118,7 @@ class CardForm(QFrame):
             box.setChecked(getattr(card, field))
         self.heroes = ChipEditor(staff)
         self.heroes.set_values(card.heroes)
+        self.setFocusProxy(self.title)
 
         header = QHBoxLayout()
         header.setSpacing(12)
@@ -212,10 +219,15 @@ class CardForm(QFrame):
 class CardZoom(QWidget):
     """Lies over the board and zooms into one card to edit it, then back out.
 
-    `open` takes the form and a function that finds the slot the card lives in; the slot is
-    looked for again on the way out, because saving may have redrawn it. `saved` carries the
-    result the moment Save or Delete is pressed, before the zoom back out, so whoever writes
-    it can redraw the slot and the zoom lands on the card as it now is.
+    `open` takes the form and a function that finds the widget the form grows out of: the
+    card, or the empty outline of one. It is looked for again on the way out, because
+    saving may have redrawn it. `saved` carries the result the moment Save or Delete is
+    pressed, before the zoom back out, so whoever writes it can redraw the slot and the zoom
+    lands on the card as it now is.
+
+    Any sheet with a `rejected` signal can be zoomed into this way; `accepted`, `changed`
+    and `result_card` are the card editor's alone. A sheet as wide as it likes, and
+    vertically expanding, fills the board less the margin.
     """
 
     saved = Signal(object)
@@ -253,7 +265,8 @@ class CardZoom(QWidget):
         self.locate = locate
         form.setParent(self)
         form.hide()
-        form.accepted.connect(self._save)
+        if hasattr(form, "accepted"):
+            form.accepted.connect(self._save)
         form.rejected.connect(self.close_card)
         self.setGeometry(self.board.rect())
         self._snapshot()
@@ -310,31 +323,33 @@ class CardZoom(QWidget):
             return
         if self.form is not None:
             self.form.show()
-            self.form.title.setFocus()
+            self.form.setFocus()
 
     def _snapshot(self) -> None:
         """Take the board as it looks, the card in it, and where the card is on it."""
         self.backdrop = self.board.grab()
-        slot = self.locate()
-        if slot is None:  # redrawn away: fly out to the middle of the board instead
+        origin = self.locate()
+        if origin is None:  # redrawn away: fly out to the middle of the board instead
             centre = QPointF(self.rect().center())
             self.face = QPixmap()
             self.origin = QRectF(centre, centre).adjusted(-40, -30, 40, 30)
             self._focus()
             return
-        if slot.layout() is not None:
-            slot.layout().activate()
-        inner = slot.rect().adjusted(SLOT_PADDING, SLOT_PADDING, -SLOT_PADDING, -SLOT_PADDING)
-        corner = slot.mapTo(self.board, inner.topLeft())
-        self.face = slot.grab(inner)
-        self.origin = QRectF(QRect(corner, inner.size()))
+        holder = origin.parentWidget()
+        if holder is not None and holder.layout() is not None:
+            holder.layout().activate()  # a card just redrawn has not been put in place yet
+        self.face = origin.grab()
+        self.origin = QRectF(QRect(origin.mapTo(self.board, QPoint(0, 0)), origin.size()))
         self._focus()
 
     def _target(self) -> QRectF:
         """Where the open card sits: the middle of the board, as large as it comfortably fits."""
         area = QRectF(self.rect()).adjusted(MARGIN, MARGIN, -MARGIN, -MARGIN)
-        width = min(area.width(), MAX_WIDTH)
-        wanted = self.form.sizeHint().height() if self.form is not None else area.height()
+        width, wanted = area.width(), area.height()
+        if self.form is not None:
+            width = min(width, self.form.maximumWidth())
+            if self.form.sizePolicy().verticalPolicy() != QSizePolicy.Expanding:
+                wanted = self.form.sizeHint().height()
         height = min(area.height(), wanted)
         return QRectF(0, 0, width, height).translated(
             area.center() - QPointF(width / 2, height / 2)
@@ -438,8 +453,13 @@ class CardZoom(QWidget):
         painter.fillPath(path, QColor(surface()))
         painter.save()
         painter.setClipPath(path)
-        # The card face gives way to the open form a little over halfway there.
-        reveal = min(1.0, max(0.0, (self.progress - 0.35) / 0.5))
+        # The face gives way to the open form as it is blown up, before it gets blurry: a
+        # card by a little over halfway there, a small button almost at once.
+        grown = max(
+            current.width() / max(self.origin.width(), 1.0),
+            current.height() / max(self.origin.height(), 1.0),
+        )
+        reveal = min(1.0, max(0.0, (grown - FADE_FROM) / (FADE_TO - FADE_FROM)))
         if not self.face.isNull():
             painter.setOpacity(1.0 - reveal)
             painter.drawPixmap(current, self.face, QRectF(self.face.rect()))
@@ -460,7 +480,9 @@ class CardZoom(QWidget):
     def mousePressEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """A click beside the card closes it, unless that would throw away what was typed."""
         event.accept()
-        if self.form is not None and self.form.isVisible() and not self.form.changed:
+        if self.form is None or not self.form.isVisible():
+            return
+        if not getattr(self.form, "changed", False):
             self.close_card()
 
     def wheelEvent(self, event) -> None:  # noqa: N802 - Qt's name

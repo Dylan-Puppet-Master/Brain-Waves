@@ -827,3 +827,102 @@ def test_a_long_title_stops_short_of_the_badges_beside_it(app):
     badge = widget.findChild(QLabel, "riskChip")
     widest = max(title.fontMetrics().horizontalAdvance(row) for row in title.text().split("\n"))
     assert title.x() + widest <= badge.x()
+
+
+def _land(zoom):
+    zoom.animation.setCurrentTime(zoom.animation.duration())
+
+
+def test_the_stats_button_opens_the_week_statistics(window, store):
+    window.resize(1400, 900)
+    window.show()
+    window.board.stats_button.click()
+    assert window.stats_zoom.is_open
+    _land(window.stats_zoom)
+    panel = window.stats_zoom.form
+    assert panel.isVisible()
+    assert panel.chart.spread.measure.key == "heroes"
+    assert panel.chart.spread.totals == [2, 0, 0, 0, 0]
+    # it fills the board, less the margin, rather than sitting in a card-sized box
+    assert panel.width() > window.board.width() * 0.8
+
+
+def test_the_stats_follow_the_week_as_it_changes(window, store):
+    window.show()
+    window.show_stats()
+    _land(window.stats_zoom)
+    window.swap_cards("M1", 0, 2)
+    assert window.stats_zoom.form.chart.spread.totals == [0, 0, 2, 0, 0]
+
+
+def test_switching_measure_is_remembered_next_time(window, store):
+    window.show()
+    window.show_stats()
+    _land(window.stats_zoom)
+    panel = window.stats_zoom.form
+    panel.choose(4)
+    assert panel.chart.spread.measure.key == "materials"
+    panel.rejected.emit()
+    _land(window.stats_zoom)
+    assert not window.stats_zoom.is_open
+    window.show_stats()
+    assert window.stats_zoom.form.measure == "materials"
+
+
+def test_the_stats_button_sketches_the_measure_last_looked_at(window, store):
+    button = window.board.stats_button
+    assert button.measure.key == "heroes"
+    assert button.loads == [2, 0, 0, 0, 0]
+    window.show()
+    window.show_stats()
+    _land(window.stats_zoom)
+    window.stats_zoom.form.choose(1)  # food, which nothing on the weekdays asks for
+    assert button.loads == [0, 0, 0, 0, 0]
+    window.stats_zoom.form.rejected.emit()
+    _land(window.stats_zoom)
+    window.swap_cards("M1", 0, 2)
+    assert button.measure.key == "food"
+    window.board.stats_button.set_measure("materials")
+    assert button.loads == [0, 0, 2, 0, 0]
+
+
+def test_the_arrow_keys_step_through_the_measures(app, week):
+    from PySide6.QtCore import QEvent, Qt
+    from PySide6.QtGui import QKeyEvent
+
+    from brainwaves.app.stats import StatsPanel
+
+    panel = StatsPanel()
+    panel.show_week(week)
+    panel.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_Left, Qt.NoModifier))
+    assert panel.measure == "materials"
+    panel.keyPressEvent(QKeyEvent(QEvent.KeyPress, Qt.Key_2, Qt.NoModifier))
+    assert panel.measure == "food"
+    assert panel.tabs[1].isChecked()
+
+
+def test_the_insight_names_every_tied_day(app, week):
+    from brainwaves.app.stats import _insight
+    from brainwaves.stats import MEASURES, spread
+
+    week = week.place("M2", 3, CabinAct(title="Cookout", heroes=("Ana", "Bo")))
+    text = _insight(spread(week, MEASURES[0]))
+    assert "<b>Monday and Thursday</b> carry the most, 2 HEROes each" in text
+    assert "<b>Tuesday, Wednesday and Friday</b> have none" in text
+
+
+def test_every_text_size_comes_from_the_named_sizes(app, monkeypatch):
+    import re
+
+    from brainwaves.app import theme
+
+    sizes = re.findall(r"font-size: (\d+)px", theme.current_stylesheet())
+    assert sizes
+    monkeypatch.setattr(theme, "TEXT_SCALE", 2.0)
+    assert re.findall(r"font-size: (\d+)px", theme.current_stylesheet()) == [
+        str(int(size) * 2) for size in sizes
+    ]
+    monkeypatch.setattr(theme, "EDITOR_CAPTION", 40)
+    assert "QFrame#cardEditor QLabel#sectionTitle { font-size: 80px; }" in (
+        theme.current_stylesheet()
+    )

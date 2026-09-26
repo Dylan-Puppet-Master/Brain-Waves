@@ -36,6 +36,43 @@ CARD_HEIGHT = 175
 SLOT_PADDING = 8
 CABIN_WIDTH = 150
 
+# Text sizes, in pixels, named for where they are used. Every size the stylesheet sets is
+# one of these, so changing a number here changes that text everywhere it appears, and
+# TEXT_SCALE makes all of it bigger or smaller at once. Cards on the board and the day
+# headings are a fixed size, so text on them much bigger than this gets cut short; the
+# card editor and the panels have room to grow.
+TEXT_SCALE = 1.0
+
+# Across the window: buttons, fields, lists, the comments and the toolbar.
+TEXT_BODY = 13
+TEXT_SMALL = 12  # timestamps, and hints such as "Click a card to read its comments"
+TEXT_CAPTION = 11  # small capitals over a section, and table headings
+TEXT_WORDMARK = 18
+
+# The board.
+TEXT_DAY_NAME = 17
+TEXT_DAY_SUBTITLE = 14
+TEXT_EXTRA_NAME = 16
+TEXT_CABIN_NAME = 18
+TEXT_CABIN_WHO = 17
+TEXT_CARD_TITLE = 15
+TEXT_CARD_BODY = 13  # description and location
+TEXT_CARD_CHIP = 12  # risk, comment count, needs and HEROES on a card
+TEXT_CARD_PLUS = 26  # the + in an empty slot
+
+# The card editor, which is read closely and has the room for it.
+EDITOR_TITLE = 24
+EDITOR_TEXT = 15  # the fields, checkboxes and buttons
+EDITOR_CAPTION = 13  # LOCATION, MATERIALS, NEEDS and the rest
+EDITOR_HINT = 14
+EDITOR_CHIP = 14  # the HERO chips and + HERO
+EDITOR_CHIP_CLOSE = 17  # the x that takes a chip off
+
+# The week statistics and the welcome page. The chart draws its own text.
+TEXT_STATS_TITLE = 22
+TEXT_STATS_INSIGHT = 14
+TEXT_WELCOME = 14
+
 # The board is laid on a warm off-white in light mode, easier on the eye over an afternoon
 # than the cool grey of the window around it, and on a matching dark slate in dark mode. The
 # row and column under the cursor are shaded a little deeper, so a card can be read across
@@ -68,7 +105,7 @@ _LIGHT = {
 _DARK = {
     "INK": "#e5e9ee",
     "MUTED": "#9aa7b4",
-    "FAINT": "#6b7583",
+    "FAINT": "#A9B0BA",
     "SURFACE": "#1e252d",
     "PANEL": "#262e37",
     "SUNKEN": "#14191f",
@@ -112,7 +149,7 @@ def _stylesheet(c: dict[str, str]) -> str:
     return f"""
 QWidget {{
     color: {c["INK"]};
-    font-size: 13px;
+    font-size: {_px(TEXT_BODY)};
 }}
 QMainWindow, QDialog {{ background: {c["SUNKEN"]}; }}
 
@@ -124,7 +161,7 @@ QToolBar#chrome {{
 }}
 QLabel#wordmark {{
     color: {c["ACCENT"]};
-    font-size: 18px;
+    font-size: {_px(TEXT_WORDMARK)};
     font-weight: 700;
     padding-right: 8px;
 }}
@@ -217,17 +254,17 @@ QWidget#dayHeader {{
     border-radius: 8px;
 }}
 QWidget#dayHeader[weekend="true"] {{ background: {c["PANEL"]}; }}
-QLabel#dayName {{ font-size: 17px; font-weight: 700; }}
+QLabel#dayName {{ font-size: {_px(TEXT_DAY_NAME)}; font-weight: 700; }}
 QLineEdit#daySubtitle {{
     border: none;
     background: transparent;
     color: {c["ACCENT"]};
     padding: 0;
-    font-size: 14px;
+    font-size: {_px(TEXT_DAY_SUBTITLE)};
     font-weight: 600;
 }}
 QLineEdit#daySubtitle:hover {{ background: {c["ACCENT_SOFT"]}; border-radius: 4px; }}
-QLabel#unplacedName {{ color: {c["MUTED"]}; font-size: 16px; font-weight: 700; }}
+QLabel#unplacedName {{ color: {c["MUTED"]}; font-size: {_px(TEXT_EXTRA_NAME)}; font-weight: 700; }}
 QPushButton#addColumn {{
     background: {c["SURFACE"]};
     border: 1px solid {c["LINE"]};
@@ -242,7 +279,7 @@ QPushButton#addChip {{
     border: 1px dashed {c["ACCENT"]};
     border-radius: 9px;
     color: {c["ACCENT_DARK"]};
-    font-size: 12px;
+    font-size: {_px(EDITOR_CHIP)};
     font-weight: 700;
     padding: 3px 10px;
 }}
@@ -259,22 +296,22 @@ QFrame#chipPill[kind="category"], QFrame#chipPill[kind="skill"] {{
 }}
 QLabel#chipPillName {{
     color: {c["ACCENT_DARK"]};
-    font-size: 12px;
+    font-size: {_px(EDITOR_CHIP)};
     font-weight: 600;
 }}
 QPushButton#chipPillClose {{
     background: transparent;
     border: none;
     color: {c["ACCENT"]};
-    font-size: 15px;
+    font-size: {_px(EDITOR_CHIP_CLOSE)};
     font-weight: 700;
     padding: 0;
 }}
 QPushButton#chipPillClose:hover {{ color: {c["DANGER"]}; }}
 
 QFrame#cabinTile {{ border-radius: 8px; }}
-QLabel#cabinName {{ font-size: 18px; font-weight: 700; }}
-QLabel#cabinWho {{ font-size: 17px; font-weight: 600; }}
+QLabel#cabinName {{ font-size: {_px(TEXT_CABIN_NAME)}; font-weight: 700; }}
+QLabel#cabinWho {{ font-size: {_px(TEXT_CABIN_WHO)}; font-weight: 600; }}
 
 QFrame#slot {{
     border: 1px dashed transparent;
@@ -294,17 +331,17 @@ QFrame#card:hover {{ border-color: {c["CARD_HOVER_LINE"]}; }}
 QFrame#card[selected="true"] {{ border: 2px solid {c["ACCENT"]}; }}
 QFrame#card[lifted="true"] {{ background: {c["PANEL"]}; }}
 QFrame#card[clash="true"] {{ border: 2px solid {c["CLASH"]}; background: {c["CLASH_BG"]}; }}
-QLabel#cardTitle {{ font-size: 15px; font-weight: 700; }}
-QLabel#cardDescription {{ color: {c["MUTED"]}; font-size: 13px; }}
-QLabel#cardLocation {{ color: {c["INK"]}; font-size: 13px; font-weight: 600; }}
-QLabel#cardEmpty {{ color: {c["FAINT"]}; font-size: 26px; font-weight: 300; }}
+QLabel#cardTitle {{ font-size: {_px(TEXT_CARD_TITLE)}; font-weight: 700; }}
+QLabel#cardDescription {{ color: {c["MUTED"]}; font-size: {_px(TEXT_CARD_BODY)}; }}
+QLabel#cardLocation {{ color: {c["INK"]}; font-size: {_px(TEXT_CARD_BODY)}; font-weight: 600; }}
+QLabel#cardEmpty {{ color: {c["FAINT"]}; font-size: {_px(TEXT_CARD_PLUS)}; font-weight: 300; }}
 QFrame#cardEditor {{
     background: {c["SURFACE"]};
     border: 1px solid {c["LINE"]};
     border-radius: 14px;
 }}
 QLineEdit#editorTitle {{
-    font-size: 22px;
+    font-size: {_px(EDITOR_TITLE)};
     font-weight: 700;
     border: 1px solid transparent;
     background: transparent;
@@ -313,6 +350,23 @@ QLineEdit#editorTitle {{
 QLineEdit#editorTitle:hover {{ border-color: {c["LINE"]}; }}
 QLineEdit#editorTitle:focus {{ border-color: {c["ACCENT"]}; background: {c["SURFACE"]}; }}
 QPushButton#danger {{ color: {c["DANGER"]}; }}
+QFrame#cardEditor QLineEdit, QFrame#cardEditor QTextEdit, QFrame#cardEditor QComboBox,
+QFrame#cardEditor QCheckBox, QFrame#cardEditor QPushButton {{
+    font-size: {_px(EDITOR_TEXT)};
+}}
+QFrame#cardEditor QLineEdit#editorTitle {{ font-size: {_px(EDITOR_TITLE)}; }}
+QFrame#cardEditor QLabel#sectionTitle {{ font-size: {_px(EDITOR_CAPTION)}; }}
+QFrame#cardEditor QLabel#hint {{ font-size: {_px(EDITOR_HINT)}; }}
+QFrame#cardEditor QPushButton#addChip {{ font-size: {_px(EDITOR_CHIP)}; }}
+QFrame#cardEditor QPushButton#chipPillClose {{ font-size: {_px(EDITOR_CHIP_CLOSE)}; }}
+QFrame#statsPanel {{
+    background: {c["SURFACE"]};
+    border: 1px solid {c["LINE"]};
+    border-radius: 14px;
+}}
+QFrame#statsPanel QLabel {{ background: transparent; }}
+QLabel#statsTitle {{ font-size: {_px(TEXT_STATS_TITLE)}; font-weight: 700; }}
+QLabel#statsInsight {{ color: {c["MUTED"]}; font-size: {_px(TEXT_STATS_INSIGHT)}; }}
 QFrame#addCard {{
     background: transparent;
     border: 1px dashed {c["SUBTLE_LINE"]};
@@ -325,7 +379,7 @@ QLabel#chip {{
     color: {c["ACCENT_DARK"]};
     border-radius: 9px;
     padding: 3px 9px;
-    font-size: 12px;
+    font-size: {_px(TEXT_CARD_CHIP)};
     font-weight: 600;
 }}
 QLabel#groupChip {{
@@ -334,7 +388,7 @@ QLabel#groupChip {{
     border: 1px dashed {c["ACCENT"]};
     border-radius: 9px;
     padding: 2px 8px;
-    font-size: 12px;
+    font-size: {_px(TEXT_CARD_CHIP)};
     font-weight: 600;
 }}
 QLabel#flagChip {{
@@ -342,14 +396,14 @@ QLabel#flagChip {{
     color: {c["MUTED"]};
     border-radius: 9px;
     padding: 3px 9px;
-    font-size: 12px;
+    font-size: {_px(TEXT_CARD_CHIP)};
     font-weight: 600;
 }}
 QLabel#riskChip {{
     border-radius: 9px;
     padding: 3px 10px;
     color: {c["CHIP_TEXT"]};
-    font-size: 12px;
+    font-size: {_px(TEXT_CARD_CHIP)};
     font-weight: 700;
 }}
 QLabel#commentBadge {{
@@ -357,7 +411,7 @@ QLabel#commentBadge {{
     color: {c["WARN_INK"]};
     border-radius: 9px;
     padding: 2px 9px;
-    font-size: 12px;
+    font-size: {_px(TEXT_CARD_CHIP)};
     font-weight: 700;
 }}
 
@@ -367,7 +421,7 @@ QFrame#welcomePanel {{
     border-radius: 14px;
 }}
 QFrame#welcomePanel > QLabel {{ border: none; background: transparent; }}
-QLabel#welcomeMessage {{ color: {c["MUTED"]}; font-size: 14px; }}
+QLabel#welcomeMessage {{ color: {c["MUTED"]}; font-size: {_px(TEXT_WELCOME)}; }}
 
 QProgressBar {{
     background: {c["SUNKEN"]};
@@ -392,14 +446,14 @@ QFrame#thread {{
     border-radius: 8px;
 }}
 QFrame#thread[resolved="true"] {{ background: {c["PANEL"]}; }}
-QLabel#threadAuthor {{ font-weight: 700; font-size: 13px; }}
-QLabel#threadWhen {{ color: {c["FAINT"]}; font-size: 12px; }}
-QLabel#threadText {{ font-size: 13px; }}
-QLabel#replyAuthor {{ color: {c["MUTED"]}; font-weight: 600; font-size: 12px; }}
-QLabel#hint {{ color: {c["FAINT"]}; font-size: 12px; }}
+QLabel#threadAuthor {{ font-weight: 700; font-size: {_px(TEXT_BODY)}; }}
+QLabel#threadWhen {{ color: {c["FAINT"]}; font-size: {_px(TEXT_SMALL)}; }}
+QLabel#threadText {{ font-size: {_px(TEXT_BODY)}; }}
+QLabel#replyAuthor {{ color: {c["MUTED"]}; font-weight: 600; font-size: {_px(TEXT_SMALL)}; }}
+QLabel#hint {{ color: {c["FAINT"]}; font-size: {_px(TEXT_SMALL)}; }}
 QLabel#sectionTitle {{
     color: {c["MUTED"]};
-    font-size: 11px;
+    font-size: {_px(TEXT_CAPTION)};
     font-weight: 700;
     letter-spacing: 1px;
 }}
@@ -418,7 +472,7 @@ QHeaderView::section {{
     border: none;
     border-bottom: 1px solid {c["LINE"]};
     color: {c["MUTED"]};
-    font-size: 11px;
+    font-size: {_px(TEXT_CAPTION)};
     font-weight: 700;
     padding: 5px 7px;
 }}
@@ -427,6 +481,11 @@ QListWidget {{ background: {c["SURFACE"]}; border: 1px solid {c["LINE"]}; border
 QListWidget::item {{ padding: 5px 8px; }}
 QListWidget::item:selected {{ background: {c["ACCENT_SOFT"]}; color: {c["INK"]}; }}
 """
+
+
+def _px(size: float) -> str:
+    """A text size as the stylesheet wants it, scaled by TEXT_SCALE."""
+    return f"{round(size * TEXT_SCALE)}px"
 
 
 def _check_mark(color: str) -> str:
@@ -485,6 +544,11 @@ def board_bg() -> str:
 def board_cross() -> str:
     """The shade laid behind the row and column under the cursor."""
     return _colors()["BOARD_CROSS"]
+
+
+def tone(name: str) -> str:
+    """One named colour from the active set, for a widget that paints itself."""
+    return _colors()[name]
 
 
 def surface() -> str:

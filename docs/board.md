@@ -33,6 +33,34 @@ landed.
 
 Hover a card to see everything, materials and notes included.
 
+## Week stats
+
+The **Week stats** tile in the top-left corner, above the cabins and beside Monday, opens
+the week's statistics. It grows out of the corner and fills the board, the way a card does
+when you open it. Its little columns are a real count: whichever measure you last looked
+at, HEROes when Brain Waves starts, day by day. Switch to Materials and close the panel,
+and the tile keeps showing materials, and the panel opens on them again next time.
+
+Across the top is one tile per measure, each with its total for the week:
+
+| Tile | Counts, per weekday |
+|---|---|
+| HEROes | Every HERO asked for, so a card asking for two counts two |
+| Food | Acts with Food ticked |
+| Van | Acts with Van needed ticked |
+| Armory | Acts with Armory ticked |
+| Materials | Every item in a card's materials list |
+
+Click a tile, or press the left and right arrows or 1 to 5, to put that measure on the
+chart. There is one column per weekday. The dashed **Even split** line shows where every
+column would stand if the week's total were spread evenly, so a column well above it is
+the day to move something off. Hover a column to see which cabins and acts make it up.
+The sentence under the chart names the busiest and quietest days. Acts in Extra have no
+day, so they add to no column; the sentence says how many are waiting there.
+
+The statistics keep up as cards move, yours and everyone else's. Press **Esc**, **Close**,
+or click outside the panel to go back to the board.
+
 ## The rest of the toolbar
 
 | Control | Does |

@@ -31,6 +31,7 @@ from brainwaves.app.comment_panel import CommentPanel
 from brainwaves.app.conflict_panel import ConflictPanel
 from brainwaves.app.dialogs import FolderDialog, RosterDialog
 from brainwaves.app.editor import CardForm, CardZoom
+from brainwaves.app.stats import StatsPanel
 from brainwaves.app.sync import JobQueue
 from brainwaves.app.theme import apply_theme
 from brainwaves.app.welcome import WelcomePage
@@ -101,9 +102,12 @@ class MainWindow(QMainWindow):
         self.board.add_requested.connect(self.add_card)
         self.board.subtitle_changed.connect(self.set_subtitle)
         self.board.overflow_requested.connect(self.add_overflow)
+        self.board.stats_requested.connect(self.show_stats)
         self.zoom = CardZoom(self.board)
         self.zoom.saved.connect(self._save_edit)
         self.editing: tuple[str, int] | None = None
+        # The statistics zoom out of the corner of the board the way a card does from its slot.
+        self.stats_zoom = CardZoom(self.board)
         self.welcome = WelcomePage()
         self.welcome.acted.connect(self._welcome_action)
         self.pages = QStackedWidget()
@@ -349,7 +353,17 @@ class MainWindow(QMainWindow):
         )
         self.editing = (cabin, column)
         self.board.reveal_slot(cabin, column)
-        self.zoom.open(form, lambda: self.board.slots.get((cabin, column)))
+        self.zoom.open(form, lambda: _content(self.board.slots.get((cabin, column))))
+
+    def show_stats(self) -> None:
+        """Open the week's statistics, on whichever measure was looked at last."""
+        if self.store is None or self.zoom.is_open or self.stats_zoom.is_open:
+            return
+        button = self.board.stats_button
+        panel = StatsPanel(button.measure.key)
+        panel.measure_changed.connect(button.set_measure)
+        panel.show_week(self.store.week)
+        self.stats_zoom.open(panel, lambda: self.board.stats_button)
 
     def _save_edit(self, card: CabinAct | None) -> None:
         """Write what the open card now says, before the zoom back out lands on it."""
@@ -537,6 +551,8 @@ class MainWindow(QMainWindow):
         """The panels beside the board, which are small enough to redraw either way."""
         self.conflicts.show_conflicts(find_conflicts(self.store.week, self.store.staff))
         self._draw_comments()
+        if self.stats_zoom.is_open and not self.stats_zoom.closing:
+            self.stats_zoom.form.show_week(self.store.week)
 
     def _draw_comments(self) -> None:
         if self.store is None:
@@ -613,6 +629,7 @@ class MainWindow(QMainWindow):
             return False
         title = self.store.week.id.title
         self.zoom.dismiss()
+        self.stats_zoom.dismiss()
         self.store = None
         self.selected_card = None
         self._stop_polling()
@@ -639,6 +656,7 @@ class MainWindow(QMainWindow):
             self.zoom.dismiss()  # a card half-edited belongs to the week that has gone
         if store is None:
             self.store = None
+            self.stats_zoom.dismiss()
             self.sheet_label.setText("")
             self._show_welcome(
                 f"There is no sheet for {week_id} in "
@@ -706,6 +724,11 @@ def _difference(drawn, current):
         return None  # a subtitle lives in the heading, which a slot redraw would miss
     slots = set(drawn.cards) | set(current.cards)
     return [slot for slot in slots if drawn.cards.get(slot) != current.cards.get(slot)]
+
+
+def _content(slot) -> QWidget | None:
+    """What a slot is showing, card or empty outline, for a zoom to grow out of."""
+    return slot.content if slot is not None else None
 
 
 def _counter(value: int) -> QSpinBox:

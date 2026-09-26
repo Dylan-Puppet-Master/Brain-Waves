@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
 )
 
 from brainwaves.app.card import AddCard, CardWidget, SlotWidget
+from brainwaves.app.stats import StatsButton
 from brainwaves.app.theme import (
     CABIN_WIDTH,
     CARD_HEIGHT,
@@ -47,6 +48,7 @@ class BoardView(QWidget):
     add_requested = Signal(str, int)
     subtitle_changed = Signal(int, str)
     overflow_requested = Signal()
+    stats_requested = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -69,6 +71,13 @@ class BoardView(QWidget):
     def _build(self) -> None:
         self.corner = QWidget()
         self.corner.setFixedSize(CABIN_WIDTH, HEADER_HEIGHT)
+        # The statistics sit where the cabin column meets the day headings, lined up with
+        # the cabin tiles below and as tall as the headings beside.
+        corner = QVBoxLayout(self.corner)
+        corner.setContentsMargins(0, 0, SLOT_PADDING, 6)
+        self.stats_button = StatsButton()
+        self.stats_button.clicked.connect(self.stats_requested)
+        corner.addWidget(self.stats_button)
         self.header, self.header_body = _strip(Qt.Horizontal)
         self.header.setFixedHeight(HEADER_HEIGHT)
         self.side, self.side_body = _strip(Qt.Vertical)
@@ -129,6 +138,7 @@ class BoardView(QWidget):
         if len(wanted) != len(list(slots)):
             self.show_week(week, comment_counts, staff)  # the board's shape changed
             return
+        self.stats_button.show_week(week)
         self.cards = {
             identifier: widget
             for identifier, widget in self.cards.items()
@@ -157,6 +167,7 @@ class BoardView(QWidget):
         self._fill_header(week)
         self._fill_side(week)
         self._fill_grid(week, comment_counts)
+        self.stats_button.show_week(week)
         self.grid_body.width_in_slots = week.columns
         self.grid_body.height_in_slots = len(week.cabins)
         self.cross(None, None)

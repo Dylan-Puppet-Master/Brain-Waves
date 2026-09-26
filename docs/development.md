@@ -76,6 +76,12 @@ as blank, an unknown risk reads as none, and a card with no id is given one.
 makes a card on the board and a card on the sheet look like the same object. Widgets ask for
 a look by object name or dynamic property; no colour is chosen anywhere else.
 
+Text sizes are named at the top of `app/theme.py`: `TEXT_*` for the window and the board,
+`EDITOR_*` for the card editor. Every size in the stylesheet is one of them, so change a
+number there and that text changes everywhere it appears. `TEXT_SCALE` makes all of them
+bigger or smaller at once. Cards and day headings are a fixed size, so their text cannot
+grow far before it is cut short. The editor and the panels have room to spare.
+
 ## Adding a field to a card
 
 `model.CabinAct`, then the sheet (above), then `app/card.py` if it should show on the card,
