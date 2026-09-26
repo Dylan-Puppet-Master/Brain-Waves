@@ -5,7 +5,7 @@ os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from dataclasses import replace
 
 import pytest
-from PySide6.QtCore import QMimeData
+from PySide6.QtCore import QMimeData, QPoint, QRect
 from PySide6.QtWidgets import QApplication, QLabel, QPushButton
 
 from brainwaves.app.board import BoardView
@@ -252,6 +252,18 @@ def test_editing_a_card_zooms_in_and_saving_writes_it(window, store):
     assert store.week.card("M1", 0).notes == "bring spare rope"
     window.zoom.animation.setCurrentTime(window.zoom.animation.duration())
     assert not window.zoom.is_open and not window.zoom.isVisible()
+
+
+def test_the_zoomed_card_leaves_its_slot_empty_behind_it(window, store):
+    window.resize(1200, 800)
+    window.show()
+    card = window.board.cards["aaa111"]
+    where = QRect(card.mapTo(window.board, QPoint(0, 0)), card.size())
+    on_board = window.board.grab().copy(where).toImage()
+    window.edit_card("aaa111")
+    behind = window.zoom.backdrop.copy(where).toImage()
+    assert behind != on_board
+    assert card.isVisible()  # back on the board, for the zoom to land on
 
 
 def test_cancelling_the_zoomed_card_writes_nothing(window, store):

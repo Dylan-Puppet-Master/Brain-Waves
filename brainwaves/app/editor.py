@@ -330,10 +330,14 @@ class CardZoom(QWidget):
             self.form.setFocus()
 
     def _snapshot(self) -> None:
-        """Take the board as it looks, the card in it, and where the card is on it."""
-        self.backdrop = self.board.grab()
+        """Take the board as it looks, the card in it, and where the card is on it.
+
+        The board is taken with the card gone from it, so the card flies out of an empty
+        place, and back into one.
+        """
         origin = self.locate()
         if origin is None:  # redrawn away: fly out to the middle of the board instead
+            self.backdrop = self.board.grab()
             centre = QPointF(self.rect().center())
             self.face = QPixmap()
             self.origin = QRectF(centre, centre).adjusted(-40, -30, 40, 30)
@@ -342,6 +346,7 @@ class CardZoom(QWidget):
         holder = origin.parentWidget()
         if holder is not None and holder.layout() is not None:
             holder.layout().activate()  # a card just redrawn has not been put in place yet
+        self.backdrop = _grab_without(self.board, origin)
         self.face = origin.grab()
         self.origin = QRectF(QRect(origin.mapTo(self.board, QPoint(0, 0)), origin.size()))
         self._focus()
@@ -501,6 +506,23 @@ class CardZoom(QWidget):
     def wheelEvent(self, event) -> None:  # noqa: N802 - Qt's name
         """The board stays put while a card is open."""
         event.accept()
+
+
+def _grab_without(board: QWidget, left_out: QWidget) -> QPixmap:
+    """A picture of the board with one widget left out of it, its room left empty."""
+    if left_out.isHidden():
+        return board.grab()
+    policy = left_out.sizePolicy()
+    kept = policy.retainSizeWhenHidden()
+    policy.setRetainSizeWhenHidden(True)  # so nothing moves into the gap
+    left_out.setSizePolicy(policy)
+    left_out.hide()
+    try:
+        return board.grab()
+    finally:
+        left_out.show()
+        policy.setRetainSizeWhenHidden(kept)
+        left_out.setSizePolicy(policy)
 
 
 def _blurred(picture: QImage, radius: int) -> QImage:
